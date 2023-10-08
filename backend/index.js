@@ -18,7 +18,10 @@ app.get("/", (req, res) => {
 //create new socket connection to client
 io.on("connection", (socket) => {
   console.log("connected to a client");
-  console.log(socket);
+  console.log(socket.id);
+  socket.on("disconnect", () => {
+    console.log("user disconnected");
+  });
 });
 
 http.listen(3001, () => {
