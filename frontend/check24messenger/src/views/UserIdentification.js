@@ -12,7 +12,7 @@ import "react-dropdown/style.css";
 export const UserIdentification = () => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState("");
-  const [userType, setUserType] = useState("");
+  const [userType, setUserType] = useState("customer");
 
   const options = ["customer", "service-provider"];
   const defaultOption = options[0];
@@ -20,6 +20,11 @@ export const UserIdentification = () => {
   const handleSubmit = (e) => {
     console.log(userName);
     console.log(userType);
+    localStorage.setItem("userName", userName);
+    localStorage.setItem("userType", userType);
+    const ut = userType == "customer" ? 0 : 1;
+    navigate("/" + userName + ut);
+
     // e.preventDefault();
     // localStorage.setItem("userName", userName);
     // navigate("/chat");

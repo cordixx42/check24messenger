@@ -19,6 +19,7 @@ function App() {
       <Routes>
         <Route path="/" element={<UserIdentification />}></Route>
         <Route path="/chat" element={<SingleChat />}></Route>
+        <Route path="/:user" element={<ChatOverview />}></Route>
       </Routes>
     </BrowserRouter>
   );

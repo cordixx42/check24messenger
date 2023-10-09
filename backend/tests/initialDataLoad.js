@@ -27,7 +27,7 @@ const conversationSchema = new mongoose.Schema({
 });
 
 // read_at as string because it can also be not read yet === ""
-const messageScheme = new mongoose.Schema({
+const messageSchema = new mongoose.Schema({
   id: Number,
   conversation_id: Number,
   message_type: String,
@@ -41,7 +41,7 @@ const messageScheme = new mongoose.Schema({
 console.log("done");
 
 const Conversation = mongoose.model("Conversation", conversationSchema);
-const Message = mongoose.model("Message", messageScheme);
+const Message = mongoose.model("Message", messageSchema);
 
 console.log("done2");
 
@@ -109,3 +109,6 @@ fs.createReadStream("../seedData/messages.csv")
 // }
 
 // run();
+
+exports.conversationSchema = conversationSchema;
+exports.messageSchema = messageSchema;
