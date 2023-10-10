@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ChatOverview } from "./views/ChatOverview";
 import { SingleChat } from "./views/SingleChat";
 import { UserIdentification } from "./views/UserIdentification";
+import { NavBar } from "./views/navbar";
 
 const url = "http://localhost:3001";
 
@@ -19,7 +20,10 @@ function App() {
       <Routes>
         <Route path="/" element={<UserIdentification />}></Route>
         <Route path="/chat" element={<SingleChat />}></Route>
-        <Route path="/:user" element={<ChatOverview />}></Route>
+        <Route path="/user/:user" element={<ChatOverview />}>
+          <Route path=":conversation" element={<SingleChat />} />
+        </Route>
+        <Route path="/text" element={<NavBar />}></Route>
       </Routes>
     </BrowserRouter>
   );

@@ -23,7 +23,7 @@ export const UserIdentification = () => {
     localStorage.setItem("userName", userName);
     localStorage.setItem("userType", userType);
     const ut = userType == "customer" ? 0 : 1;
-    navigate("/" + userName + ut);
+    navigate("/user/" + userName + ut);
 
     // e.preventDefault();
     // localStorage.setItem("userName", userName);

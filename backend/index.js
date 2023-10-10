@@ -55,13 +55,13 @@ app.get("/conversations", async (req, res) => {
 
   //depending on type fetch based on customer / service-provider
   if (type == "1") {
-    console.log("service provider");
+    //console.log("service provider");
     conv = await Conversation.find(
       { service_provider_name: name },
       "id customer_name service_provider_name state"
     );
   } else {
-    console.log("customer");
+    //console.log("customer");
     conv = await Conversation.find(
       { customer_name: name },
       "id customer_name service_provider_name state"
