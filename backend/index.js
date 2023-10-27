@@ -36,6 +36,12 @@ const messageSchema = new mongoose.Schema({
 const Conversation = mongoose.model("Conversation", conversationSchema);
 const Message = mongoose.model("Message", messageSchema);
 
+// key-value pair to save userName-socketId
+const activeUsersToSockets = {};
+// TODO idea for taking into account that a person can be both customer and client
+const activeCustomersToSockets = {};
+const activeProvidersToSockets = {};
+
 const io = require("socket.io")(http, {
   cors: {
     origin: "http://localhost:3000",
@@ -44,6 +50,26 @@ const io = require("socket.io")(http, {
 
 app.get("/", (req, res) => {
   res.send("<h1>Hello world</h1>");
+});
+
+//given a username returns true if user exists, false if not
+app.get("/identification", async (req, res) => {
+  const name = req.query.name;
+  const type = req.query.type;
+  var count = 0;
+  if (type == "1") {
+    count = await Conversation.find(
+      { service_provider_name: name },
+      "service_provider_name"
+    ).count();
+  } else {
+    count = await Conversation.find(
+      { customer_name: name },
+      "customer_name"
+    ).count();
+  }
+
+  res.send(count > 0);
 });
 
 // given a username and a type (0,1) gives back a list of conversations for this user
@@ -78,6 +104,8 @@ app.get("/messages", async (req, res) => {
     created_at: -1,
   });
 
+  // console.log(mess[0]);
+
   res.send(mess);
 });
 
@@ -85,10 +113,64 @@ app.get("/messages", async (req, res) => {
 io.on("connection", (socket) => {
   console.log("connected to a client");
   console.log(socket.id);
+
+  //for username to socket mapping
+  socket.on("initialIdentfication", (data) => {
+    console.log("oh something came");
+    console.log(data);
+    activeUsersToSockets[data.userName] = data.socketId;
+    console.log(activeUsersToSockets);
+  });
+
+  socket.on("sendMessage", async (data) => {
+    console.log("message came");
+    console.log(data);
+    var conv;
+    var recipient;
+    if (data.userType) {
+      conv = await Conversation.find({ id: data.convId }, "customer_name");
+      conv != [] && (recipient = conv[0].customer_name);
+    } else {
+      conv = await Conversation.find(
+        { id: data.convId },
+        "service_provider_name"
+      );
+      conv != [] && (recipient = conv[0].service_provider_name);
+    }
+
+    console.log(conv);
+    console.log(recipient);
+
+    // TODO save message into database message doc
+
+    // try send to recipient
+    const recSocket = activeUsersToSockets[recipient];
+    console.log(recSocket);
+    if (recSocket != undefined) {
+      // TODO send message in the correct format resulting after insertion into MongoDB
+      io.to(recSocket).emit("receiveMessage", {
+        convId: data.convId,
+        text: data.text,
+      });
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log("user disconnected");
+    const key = Object.keys(activeUsersToSockets).find(
+      (key) => activeUsersToSockets[key] === socket.id
+    );
+    if (key != undefined) {
+      console.log("user socket in dict");
+      delete activeUsersToSockets[key];
+      console.log(activeUsersToSockets);
+    }
   });
 });
+
+// io.on("firstIdentification", (data) => {
+//   io.emit("responxwxse", data);
+// });
 
 http.listen(3001, () => {
   console.log("listening on *:3001");

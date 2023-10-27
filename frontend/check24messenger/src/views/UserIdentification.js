@@ -3,13 +3,13 @@ import { useState } from "react";
 import {
   Button,
   StyledContainer,
-  InputField,
+  LoginInputField,
   Column,
 } from "../style/components";
 import Dropdown from "react-dropdown";
 import "react-dropdown/style.css";
 
-export const UserIdentification = () => {
+export const UserIdentification = ({ socket }) => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState("");
   const [userType, setUserType] = useState("customer");
@@ -20,10 +20,29 @@ export const UserIdentification = () => {
   const handleSubmit = (e) => {
     console.log(userName);
     console.log(userType);
-    localStorage.setItem("userName", userName);
-    localStorage.setItem("userType", userType);
+
     const ut = userType == "customer" ? 0 : 1;
-    navigate("/user/" + userName + ut);
+
+    fetch(
+      "http://localhost:3001/identification/?name=" + userName + "&type=" + ut
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        console.log(data);
+        if (data) {
+          localStorage.setItem("userName", userName);
+          localStorage.setItem("userType", userType);
+          // TODO problem when refreshing page socket also disconnects and reconnects
+          socket.emit("initialIdentfication", {
+            socketId: socket.id,
+            userName: userName,
+            userType: ut,
+          });
+          navigate("/" + userName + ut);
+        } else {
+          navigate("/notfound");
+        }
+      });
 
     // e.preventDefault();
     // localStorage.setItem("userName", userName);
@@ -44,10 +63,10 @@ export const UserIdentification = () => {
     <StyledContainer>
       <Column>
         <h1> Welcome to the CHECK24 Web Messenger </h1>
-        <InputField
+        <LoginInputField
           placeholder="Please enter your name"
           onChange={handleName}
-        ></InputField>
+        ></LoginInputField>
         <Dropdown
           options={options}
           onChange={handleUserType}
