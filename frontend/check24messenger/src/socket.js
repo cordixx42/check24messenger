@@ -1,4 +1,6 @@
-// import { io } from "socket.io-client";
-// const URL = "http://localhost:3001";
+import socketIO from "socket.io-client";
+import React from "react";
 
-// export const socket = io(URL);
+const url = "http://localhost:3001";
+export const socket = socketIO.connect(url);
+export const SocketContext = React.createContext();

@@ -10,29 +10,25 @@ import { SingleChat } from "./views/SingleChat";
 import { UserIdentification } from "./views/UserIdentification";
 import { Default } from "./views/DefaultView";
 import { Button } from "./style/components";
-
-const url = "http://localhost:3001";
-const socket = socketIO.connect(url);
+import { SocketContext, socket } from "./socket";
 
 function App() {
   return (
-    <BrowserRouter>
-      {/* <Default /> */}
-      <Routes>
-        <Route
-          path="/"
-          element={<UserIdentification socket={socket} />}
-        ></Route>
-        <Route path="/:userinfo" element={<ChatOverview socket={socket} />}>
-          <Route
-            path=":conversation"
-            element={<SingleChat socket={socket} />}
-          />
-          <Route path="default" element={<Default />} />
-        </Route>
-        <Route path="/notfound" element={<Default />}></Route>
-      </Routes>
-    </BrowserRouter>
+    <SocketContext.Provider value={socket}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<UserIdentification />}></Route>
+          <Route path="/:userinfo/*" element={<ChatOverview socket={socket} />}>
+            {/* <Route
+              path=":conversation"
+              element={<SingleChat socket={socket} />}
+            />
+            <Route path="default" element={<Default />} /> */}
+          </Route>
+          <Route path="/notfound" element={<Default />}></Route>
+        </Routes>
+      </BrowserRouter>
+    </SocketContext.Provider>
   );
 }
 

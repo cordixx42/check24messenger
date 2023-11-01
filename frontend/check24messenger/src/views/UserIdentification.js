@@ -1,5 +1,5 @@
-import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useNavigate, Routes, Route } from "react-router-dom";
+import { useState, useEffect } from "react";
 import {
   Button,
   StyledContainer,
@@ -8,14 +8,22 @@ import {
 } from "../style/components";
 import Dropdown from "react-dropdown";
 import "react-dropdown/style.css";
+import { Test } from "./TestView";
 
-export const UserIdentification = ({ socket }) => {
+export const UserIdentification = ({}) => {
   const navigate = useNavigate();
+  // <Routes>
+  //   <Route path="/test" element={<Test />} />
+  // </Routes>;
   const [userName, setUserName] = useState("");
   const [userType, setUserType] = useState("customer");
 
   const options = ["customer", "service-provider"];
   const defaultOption = options[0];
+
+  useEffect(() => {
+    console.log("effect");
+  }, []);
 
   const handleSubmit = (e) => {
     console.log(userName);
@@ -33,11 +41,11 @@ export const UserIdentification = ({ socket }) => {
           localStorage.setItem("userName", userName);
           localStorage.setItem("userType", userType);
           // TODO problem when refreshing page socket also disconnects and reconnects
-          socket.emit("initialIdentfication", {
-            socketId: socket.id,
-            userName: userName,
-            userType: ut,
-          });
+          // socket.emit("initialIdentfication", {
+          //   socketId: socket.id,
+          //   userName: userName,
+          //   userType: ut,
+          // });
           navigate("/" + userName + ut);
         } else {
           navigate("/notfound");
@@ -59,6 +67,9 @@ export const UserIdentification = ({ socket }) => {
     }
   };
 
+  const handleTest = (e) => {
+    navigate("/test");
+  };
   return (
     <StyledContainer>
       <Column>
@@ -74,6 +85,7 @@ export const UserIdentification = ({ socket }) => {
           placeholder="Select what user type you are"
         />
         <Button onClick={handleSubmit}>submit</Button>
+        <Button onClick={handleTest}>test</Button>
       </Column>
     </StyledContainer>
   );

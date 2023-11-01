@@ -8,6 +8,9 @@ const mongoose = require("mongoose");
 //   messageSchema,
 // } = require("./tests/initialDataLoad");
 
+//TOOD change this
+nextMessageId = 8;
+
 app.use(cors());
 
 mongoose.connect("mongodb://127.0.0.1:27017/check24");
@@ -74,6 +77,7 @@ app.get("/identification", async (req, res) => {
 
 // given a username and a type (0,1) gives back a list of conversations for this user
 app.get("/conversations", async (req, res) => {
+  console.log("rest conversation request");
   const name = req.query.name;
   const type = req.query.type;
 
@@ -122,15 +126,24 @@ io.on("connection", (socket) => {
     console.log(activeUsersToSockets);
   });
 
-  socket.on("sendMessage", async (data) => {
+  socket.on("getConversationState", async (data) => {
+    console.log("conv state inquiry");
+    conv = await Conversation.find({ id: data.convId }, "state");
+    socket.emit("receiveConversationState", conv[0].state);
+  });
+
+  socket.on("sendSingleMessage", async (data) => {
     console.log("message came");
     console.log(data);
     var conv;
     var recipient;
+    var userTypeName;
     if (data.userType) {
+      userTypeName = "service_provider";
       conv = await Conversation.find({ id: data.convId }, "customer_name");
       conv != [] && (recipient = conv[0].customer_name);
     } else {
+      userTypeName = "customer";
       conv = await Conversation.find(
         { id: data.convId },
         "service_provider_name"
@@ -141,18 +154,67 @@ io.on("connection", (socket) => {
     console.log(conv);
     console.log(recipient);
 
+    // TODO check if message will change conversation status !!!
+
     // TODO save message into database message doc
 
-    // try send to recipient
-    const recSocket = activeUsersToSockets[recipient];
-    console.log(recSocket);
-    if (recSocket != undefined) {
-      // TODO send message in the correct format resulting after insertion into MongoDB
-      io.to(recSocket).emit("receiveMessage", {
-        convId: data.convId,
-        text: data.text,
+    var m = new Message({
+      id: nextMessageId,
+      conversation_id: data.convId,
+      message_type: data.message_type,
+      text: data.text,
+      sender_type: userTypeName,
+      read_at: null,
+      created_at: data.date,
+      updated_at: data.date,
+    });
+    m.save()
+      .then(function (data) {
+        console.log("saving successful");
+        console.log(data);
+        //update conversation if neccesary
+        var convState = "";
+        if (m.message_type == "reject_quote_message") {
+          const filter = { id: data.convId };
+          const update = { state: "rejected", updated_at: m.created_at };
+          Conversation.findOneAndUpdate(filter, update);
+          convState = "rejected";
+        } else if (m.message_type == "accept_quote_message") {
+          const filter = { id: data.convId };
+          const update = { state: "accepted", updated_at: m.created_at };
+          Conversation.findOneAndUpdate(filter, update);
+          convState = "accepted";
+        }
+        //send back to sender
+        socket.emit("receiveSingleMessage", data);
+        convState != "" && socket.emit("receiveConversationState", convState);
+        // try send to recipient
+        const recSocket = activeUsersToSockets[recipient];
+        console.log(recSocket);
+        if (recSocket != undefined) {
+          // TODO send message in the correct format resulting after insertion into MongoDB
+          io.to(recSocket).emit("receiveSingleMessage", data);
+          convState != "" &&
+            io.to(recSocket).emit("receiveConversationState", convState);
+        }
+      })
+      .catch(function (err) {
+        console.log("saving not successful");
+        console.log(err);
       });
-    }
+
+    console.log("beforeIncrement");
+
+    nextMessageId++;
+  });
+
+  socket.on("getAllMessages", async (data) => {
+    console.log("clients loading initial messages");
+    const convId = data.convId;
+    const mess = await Message.find({ conversation_id: convId }).sort({
+      created_at: 1,
+    });
+    socket.emit("receiveAllMessages", mess);
   });
 
   socket.on("disconnect", () => {

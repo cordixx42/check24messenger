@@ -1,12 +1,13 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Route, Routes } from "react-router-dom";
 import { useParams } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Column, Row, Button } from "../style/components";
 import { styled } from "styled-components";
-import { SingleChat, SingleChatChild, StaticChat } from "./SingleChat";
+import { Default } from "./DefaultView";
 import { Outlet } from "react-router-dom";
-import { Sidebar, Menu, MenuItem, SubMenu } from "react-pro-sidebar";
 import socketIO from "socket.io-client";
+import { SocketContext } from "../socket";
+import { SingleChat } from "./SingleChat";
 
 const RowWithoutGap = styled(Row)`
   gap: 0px;
@@ -16,7 +17,17 @@ const ConversationBar = styled(Column)`
   height: 100vh;
   width: 25vw;
   background-color: beige;
-  justify-content: start;
+  overflow-y: scroll;
+
+  /* border-radius: 7px; */
+`;
+
+const DetailedChatArea = styled(Column)`
+  height: 100vh;
+  width: 75vw;
+  background-color: gray;
+  overflow-y: scroll;
+
   /* border-radius: 7px; */
 `;
 
@@ -33,22 +44,14 @@ const ConversationBox = styled.div`
   border-radius: 7px;
 `;
 
-const DetailedChatArea = styled(Column)`
-  height: 100vh;
-  width: 75vw;
-  background-color: gray;
-
-  /* border-radius: 7px; */
-`;
-
 const ProfileButton = styled(Button)`
   font-size: 30px;
 `;
 
-const url = "http://localhost:3001";
-
-export const ChatOverview = ({ socket }) => {
+export const ChatOverview = ({}) => {
   const navigate = useNavigate();
+
+  const socket = useContext(SocketContext);
 
   const { userinfo } = useParams();
   const userName = userinfo.slice(0, userinfo.length - 1);
@@ -57,12 +60,20 @@ export const ChatOverview = ({ socket }) => {
 
   const [conversations, setConversations] = useState([]);
 
+  const [currentConv, setCurrentConv] = useState("");
+
   const [change, setChange] = useState(false);
 
-  function sendMessage() {
-    console.log("Button clicked");
-    console.log(socket.id);
-  }
+  //initial identification now here, mounting triggers reidentifying
+  //TODO this happens twice at refreshing page ??
+  useEffect(() => {
+    while (socket.id == undefined) {}
+    socket.emit("initialIdentfication", {
+      socketId: socket.id,
+      userName: userName,
+      userType: userType,
+    });
+  }, []);
 
   useEffect(() => {
     fetch(
@@ -79,6 +90,7 @@ export const ChatOverview = ({ socket }) => {
 
   //TODO add conversation status too
   const handleConversation = (convId) => {
+    setCurrentConv(convId);
     navigate("/" + userinfo + "/" + convId + "." + userType);
   };
 
@@ -102,13 +114,13 @@ export const ChatOverview = ({ socket }) => {
           <h1>{userName}</h1>
           <ProfileButton onClick={handleDefault}>Profile</ProfileButton>
           <ProfileButton onClick={handleBye}>Goodbye</ProfileButton>
-          <ProfileButton onClick={sendMessage}>sockettest</ProfileButton>
           <h1>My Conversations</h1>
           {conversations &&
             conversations.map((conv) => (
               <ConversationBox
                 key={conv.id}
                 onClick={() => {
+                  console.log(conv.id + "was clicked ");
                   handleConversation(conv.id);
                 }}
               >
@@ -117,107 +129,16 @@ export const ChatOverview = ({ socket }) => {
             ))}
         </ConversationBar>
         <DetailedChatArea>
-          <Outlet />
+          {/* <Outlet /> */}
+          <Routes>
+            <Route
+              path=":conversation"
+              element={<SingleChat key={currentConv} socket={socket} />}
+            />
+            <Route path="default" element={<Default />} />
+          </Routes>
         </DetailedChatArea>
       </RowWithoutGap>
-    </>
-  );
-};
-
-// experimenting with differnet methods of rendering chat view
-export const ChatOverviewChild = () => {
-  const navigate = useNavigate();
-
-  const { userinfo } = useParams();
-  const userName = userinfo.slice(0, userinfo.length - 1);
-  // 0 -> customer, 1 -> service-provider
-  const userType = parseInt(userinfo.at(userinfo.length - 1));
-
-  const [conversations, setConversations] = useState([]);
-
-  const [messages, setMessages] = useState([]);
-
-  // conversation id
-  const [currentConv, setCurrentConv] = useState(0);
-
-  useEffect(() => {
-    fetch(
-      "http://localhost:3001/conversations/?name=" +
-        userName +
-        "&type=" +
-        userType
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        setConversations(data);
-        console.log(data);
-        console.log(conversations);
-      });
-  }, []);
-
-  useEffect(() => {
-    currentConv != 0 &&
-      fetch("http://localhost:3001/messages/?convId=" + currentConv)
-        .then((res) => res.json())
-        .then((data) => {
-          setMessages(data);
-          console.log(data);
-          console.log(messages);
-        });
-  }, [currentConv]);
-
-  const handleConversation = (providerName, convId) => {
-    console.log(providerName);
-    //setCurrentConv(convId);
-    navigate("/" + userinfo + "/" + convId + "." + userType);
-  };
-
-  const handleDefault = () => {
-    navigate("/" + userinfo + "/default");
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    //navigate("/chat");
-  };
-
-  return (
-    <>
-      <h1>
-        current user "{userinfo}" with name "{userName}" and type "{userType}"
-      </h1>
-
-      <Row>
-        <ConversationBar>
-          <ProfileButton onClick={handleDefault}>Profile</ProfileButton>
-          <h1>Conversations go here</h1>
-          {conversations &&
-            conversations.map((conv) => (
-              <ConversationBox
-                key="{conv.id}"
-                onClick={() =>
-                  handleConversation(conv.service_provider_name, conv.id)
-                }
-              >
-                {conv.service_provider_name}
-              </ConversationBox>
-            ))}
-        </ConversationBar>
-        <DetailedChatArea>
-          <Outlet />
-          {/* <SingleChatChild
-            convId={currentConv}
-            userType={userType}
-            messages={messages}
-            // setMessages={setMessages}
-          /> */}
-          {/* {messages &&
-            messages.map((mess) => (
-              <ConversationBox>{mess.text}</ConversationBox>
-            ))} */}
-          {/* <StaticChat messages={messages} /> */}
-        </DetailedChatArea>
-      </Row>
     </>
   );
 };
