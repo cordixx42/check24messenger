@@ -67,9 +67,6 @@ export const UserIdentification = ({}) => {
     }
   };
 
-  const handleTest = (e) => {
-    navigate("/test");
-  };
   return (
     <StyledContainer>
       <Column>
@@ -85,7 +82,6 @@ export const UserIdentification = ({}) => {
           placeholder="Select what user type you are"
         />
         <Button onClick={handleSubmit}>submit</Button>
-        <Button onClick={handleTest}>test</Button>
       </Column>
     </StyledContainer>
   );

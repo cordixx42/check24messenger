@@ -13,7 +13,7 @@ nextMessageId = 8;
 
 app.use(cors());
 
-mongoose.connect("mongodb://127.0.0.1:27017/check24");
+mongoose.connect("mongodb://127.0.0.1:27017/check24-2");
 
 const conversationSchema = new mongoose.Schema({
   id: Number,
@@ -34,6 +34,7 @@ const messageSchema = new mongoose.Schema({
   read_at: String,
   created_at: Date,
   updated_at: Date,
+  base64_file: String,
 });
 
 const Conversation = mongoose.model("Conversation", conversationSchema);
@@ -104,9 +105,11 @@ app.get("/conversations", async (req, res) => {
 // given a conversation id gives back all messages in the conversation ordered by creation date
 app.get("/messages", async (req, res) => {
   const convId = req.query.convId;
-  const mess = await Message.find({ conversation_id: convId }).sort({
-    created_at: -1,
-  });
+  const mess = await Message.find({ conversation_id: convId })
+    .sort({
+      created_at: -1,
+    })
+    .limit(100);
 
   // console.log(mess[0]);
 
@@ -128,8 +131,17 @@ io.on("connection", (socket) => {
 
   socket.on("getConversationState", async (data) => {
     console.log("conv state inquiry");
+    console.log(data.convId);
     conv = await Conversation.find({ id: data.convId }, "state");
     socket.emit("receiveConversationState", conv[0].state);
+  });
+
+  socket.on("getOtherUser", async (data) => {
+    conv = await Conversation.find(
+      { id: data.convId },
+      "customer_name service_provider_name"
+    );
+    socket.emit("receiveOtherUser", conv[0]);
   });
 
   socket.on("sendSingleMessage", async (data) => {
@@ -138,6 +150,7 @@ io.on("connection", (socket) => {
     var conv;
     var recipient;
     var userTypeName;
+    // find out correct recipient of message
     if (data.userType) {
       userTypeName = "service_provider";
       conv = await Conversation.find({ id: data.convId }, "customer_name");
@@ -154,7 +167,7 @@ io.on("connection", (socket) => {
     console.log(conv);
     console.log(recipient);
 
-    // TODO check if message will change conversation status !!!
+    // TODO check if message includes base64
 
     // TODO save message into database message doc
 
@@ -167,44 +180,47 @@ io.on("connection", (socket) => {
       read_at: null,
       created_at: data.date,
       updated_at: data.date,
+      base64_file: data.withFile ? data.fileBase64 : "",
     });
+
     m.save()
       .then(function (data) {
         console.log("saving successful");
         console.log(data);
-        //update conversation if neccesary
-        var convState = "";
-        if (m.message_type == "reject_quote_message") {
-          const filter = { id: data.convId };
-          const update = { state: "rejected", updated_at: m.created_at };
-          Conversation.findOneAndUpdate(filter, update);
-          convState = "rejected";
-        } else if (m.message_type == "accept_quote_message") {
-          const filter = { id: data.convId };
-          const update = { state: "accepted", updated_at: m.created_at };
-          Conversation.findOneAndUpdate(filter, update);
-          convState = "accepted";
-        }
         //send back to sender
         socket.emit("receiveSingleMessage", data);
-        convState != "" && socket.emit("receiveConversationState", convState);
-        // try send to recipient
+        // try send to recipient if existing in active sockets
         const recSocket = activeUsersToSockets[recipient];
-        console.log(recSocket);
+        console.log("receiving socket is " + recSocket);
         if (recSocket != undefined) {
-          // TODO send message in the correct format resulting after insertion into MongoDB
           io.to(recSocket).emit("receiveSingleMessage", data);
-          convState != "" &&
-            io.to(recSocket).emit("receiveConversationState", convState);
         }
       })
       .catch(function (err) {
         console.log("saving not successful");
         console.log(err);
       });
+    //update conversation state if neccesary
+    var convState = "";
+    if (m.message_type == "reject_quote_message") {
+      const filter = { id: data.convId };
+      const update = { state: "rejected", updated_at: m.created_at };
+      await Conversation.findOneAndUpdate(filter, update);
+      convState = "rejected";
+    } else if (m.message_type == "accept_quote_message") {
+      const filter = { id: data.convId };
+      const update = { state: "accepted", updated_at: m.created_at };
+      await Conversation.findOneAndUpdate(filter, update);
+      convState = "accepted";
+    }
+
+    convState != "" && socket.emit("receiveConversationState", convState);
+    const recSocket = activeUsersToSockets[recipient];
+    if (convState != "" && recSocket != undefined) {
+      io.to(recSocket).emit("receiveConversationState", convState);
+    }
 
     console.log("beforeIncrement");
-
     nextMessageId++;
   });
 
@@ -229,10 +245,6 @@ io.on("connection", (socket) => {
     }
   });
 });
-
-// io.on("firstIdentification", (data) => {
-//   io.emit("responxwxse", data);
-// });
 
 http.listen(3001, () => {
   console.log("listening on *:3001");

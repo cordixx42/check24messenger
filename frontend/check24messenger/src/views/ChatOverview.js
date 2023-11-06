@@ -1,13 +1,16 @@
 import { useNavigate, Route, Routes } from "react-router-dom";
 import { useParams } from "react-router-dom";
 import { useState, useEffect, useContext } from "react";
-import { Column, Row, Button } from "../style/components";
+import { Column, Row, Button, SimpleBox } from "../style/components";
 import { styled } from "styled-components";
 import { Default } from "./DefaultView";
 import { Outlet } from "react-router-dom";
 import socketIO from "socket.io-client";
-import { SocketContext } from "../socket";
 import { SingleChat } from "./SingleChat";
+import { socket } from "../socket";
+
+// const url = "http://localhost:3001";
+// export const socket = socketIO.connect(url);
 
 const RowWithoutGap = styled(Row)`
   gap: 0px;
@@ -25,33 +28,26 @@ const ConversationBar = styled(Column)`
 const DetailedChatArea = styled(Column)`
   height: 100vh;
   width: 75vw;
-  background-color: gray;
-  overflow-y: scroll;
+  background-color: #587e96;
+  overflow: hidden;
+  // overflow-y: scroll;
 
   /* border-radius: 7px; */
 `;
 
-const ConversationBox = styled.div`
-  background-color: #808fd9;
-  font-size: 30px;
-  padding: 15px;
-  margin: 10px;
-  align-items: center;
+const ConversationBox = styled(SimpleBox)`
   cursor: pointer;
   &:hover {
     background-color: lightblue;
   }
-  border-radius: 7px;
 `;
 
 const ProfileButton = styled(Button)`
   font-size: 30px;
 `;
 
-export const ChatOverview = ({}) => {
+export const ChatOverview = () => {
   const navigate = useNavigate();
-
-  const socket = useContext(SocketContext);
 
   const { userinfo } = useParams();
   const userName = userinfo.slice(0, userinfo.length - 1);
@@ -62,18 +58,21 @@ export const ChatOverview = ({}) => {
 
   const [currentConv, setCurrentConv] = useState("");
 
-  const [change, setChange] = useState(false);
+  useEffect(() => {
+    socket.connect();
+  }, []);
 
   //initial identification now here, mounting triggers reidentifying
-  //TODO this happens twice at refreshing page ??
   useEffect(() => {
-    while (socket.id == undefined) {}
-    socket.emit("initialIdentfication", {
-      socketId: socket.id,
-      userName: userName,
-      userType: userType,
+    socket.on("connect", () => {
+      console.log("connected with id " + socket.id); // x8WIv7-mJelg7on_ALbx
+      socket.emit("initialIdentfication", {
+        socketId: socket.id,
+        userName: userName,
+        userType: userType,
+      });
     });
-  }, []);
+  }, [socket]);
 
   useEffect(() => {
     fetch(
@@ -88,7 +87,6 @@ export const ChatOverview = ({}) => {
       });
   }, []);
 
-  //TODO add conversation status too
   const handleConversation = (convId) => {
     setCurrentConv(convId);
     navigate("/" + userinfo + "/" + convId + "." + userType);
@@ -113,8 +111,10 @@ export const ChatOverview = ({}) => {
         <ConversationBar>
           <h1>{userName}</h1>
           <ProfileButton onClick={handleDefault}>Profile</ProfileButton>
-          <ProfileButton onClick={handleBye}>Goodbye</ProfileButton>
-          <h1>My Conversations</h1>
+          <ProfileButton style={{ fontSize: "15px" }} onClick={handleBye}>
+            LogOut
+          </ProfileButton>
+          <h1>{userName}'s Chats</h1>
           {conversations &&
             conversations.map((conv) => (
               <ConversationBox
@@ -133,7 +133,7 @@ export const ChatOverview = ({}) => {
           <Routes>
             <Route
               path=":conversation"
-              element={<SingleChat key={currentConv} socket={socket} />}
+              element={<SingleChat key={currentConv} />}
             />
             <Route path="default" element={<Default />} />
           </Routes>
