@@ -7,6 +7,7 @@ import { Default } from "./DefaultView";
 import { Outlet } from "react-router-dom";
 import socketIO from "socket.io-client";
 import { SingleChat } from "./SingleChat";
+import { Chat } from "./Chat";
 import { socket } from "../socket";
 
 // const url = "http://localhost:3001";
@@ -19,7 +20,7 @@ const RowWithoutGap = styled(Row)`
 const ConversationBar = styled(Column)`
   height: 100vh;
   width: 25vw;
-  background-color: beige;
+  background-color: #c5c8f6;
   overflow-y: scroll;
 
   /* border-radius: 7px; */
@@ -109,12 +110,15 @@ export const ChatOverview = () => {
 
       <RowWithoutGap>
         <ConversationBar>
-          <h1>{userName}</h1>
-          <ProfileButton onClick={handleDefault}>Profile</ProfileButton>
-          <ProfileButton style={{ fontSize: "15px" }} onClick={handleBye}>
-            LogOut
+          <h1>{userName.toUpperCase()}</h1>
+          <ProfileButton onClick={handleDefault}>PROFILE</ProfileButton>
+          <ProfileButton
+            style={{ fontSize: "20px", borderRadius: "20px" }}
+            onClick={handleBye}
+          >
+            LOGOUT
           </ProfileButton>
-          <h1>{userName}'s Chats</h1>
+          <h1>MY CHATS</h1>
           {conversations &&
             conversations.map((conv) => (
               <ConversationBox
@@ -124,17 +128,15 @@ export const ChatOverview = () => {
                   handleConversation(conv.id);
                 }}
               >
-                {userType ? conv.customer_name : conv.service_provider_name}
+                {userType
+                  ? conv.customer_name.toUpperCase()
+                  : conv.service_provider_name.toUpperCase()}
               </ConversationBox>
             ))}
         </ConversationBar>
         <DetailedChatArea>
-          {/* <Outlet /> */}
           <Routes>
-            <Route
-              path=":conversation"
-              element={<SingleChat key={currentConv} />}
-            />
+            <Route path=":conversation" element={<Chat key={currentConv} />} />
             <Route path="default" element={<Default />} />
           </Routes>
         </DetailedChatArea>

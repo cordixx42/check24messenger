@@ -23,7 +23,7 @@ export const StyledContainer = styled.div`
 `;
 
 export const Button = styled.button`
-  background: whitesmoke;
+  background: #d7e6f3;
   font-size: 20px;
   margin: 1em;
   padding: 0.25em 1em;
@@ -37,7 +37,7 @@ export const LoginInputField = styled.input`
   border: 3px solid #005ea8;
   padding: 7px 12px;
   outline: none;
-  font-size: 16px;
+  font-size: 25px;
 `;
 
 export const MessageInputField = styled.textarea`

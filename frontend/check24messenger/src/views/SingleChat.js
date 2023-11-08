@@ -4,20 +4,26 @@ import { Button, MessageInputField, SimpleBox } from "../style/components";
 import { Row, Column } from "../style/components";
 import styled from "styled-components";
 import { socket } from "../socket";
+import r1 from "../imgs/review1.jpeg";
+import r2 from "../imgs/review2.jpeg";
+import r3 from "../imgs/review3.jpeg";
+import r4 from "../imgs/review4.jpeg";
+import r5 from "../imgs/review5.jpeg";
 
 const OverRideButton = styled(Button)`
   border: 4px solid #4fbfa3;
 `;
 
 const MessageFrame = styled(Column)`
-  background-color: #b4c4ce;
+  background-color: #d7e2e2;
   overflow-y: scroll;
   width: 100%;
   border-radius: 10px;
+  height: 80%;
 `;
 
 const MessageBox = styled.div`
-  background: greenyellow;
+  background: whitesmoke;
   font-size: 15px;
   padding: 15px;
   margin: 10px;
@@ -40,16 +46,23 @@ export const SingleChat = () => {
   //consider saving in localstorage
   const userType = parseInt(conversation.split(".")[1]);
   const userTypeName = userType ? "service_provider" : "customer";
+  const otherUserTypeName = userType ? "customer" : "service_provider";
+
+  const [review, setReview] = useState(-1);
 
   const [conversationState, setConversationState] = useState("");
 
-  const [otherUser, setOtherUser] = useState(null);
+  const [otherUser, setOtherUser] = useState("");
+
+  const [me, setMe] = useState("");
 
   const [messages, setMessages] = useState([]);
 
   const [currentMessage, setCurrentMessage] = useState("");
 
   const [receivedMessage, setReceivedMessage] = useState("");
+
+  const [acceptMessageDate, setAcceptMessageDate] = useState("");
 
   const [file, setFile] = useState(null);
   const [base64, setBase64] = useState("");
@@ -79,7 +92,6 @@ export const SingleChat = () => {
     }
   }, [file]);
 
-  //TODO case if file is image, maybe limit images to png and jpg
   const base64toBlob = (data) => {
     var contentType;
 
@@ -95,7 +107,6 @@ export const SingleChat = () => {
       contentType = "image/png";
     }
 
-    //const pdfContentType = "application/pdf";
     const base64WithoutPrefix = data.substr(
       `data:${contentType};base64,`.length
     );
@@ -111,8 +122,8 @@ export const SingleChat = () => {
   const handleSend = (e) => {
     console.log(currentMessage);
     var mt = messageType;
-    //customer implicit standard message
-    if (mt == "" && userType == 0) {
+    //implicit standard message
+    if (mt == "") {
       mt = "standard_message";
     }
 
@@ -130,6 +141,7 @@ export const SingleChat = () => {
     setCurrentMessage("");
     setFile(null);
     setBase64("");
+    setMessageType("");
   };
 
   useEffect(() => {
@@ -137,35 +149,41 @@ export const SingleChat = () => {
       console.log("received initial messages");
       console.log(data);
       setMessages(data);
-      // scroll();
     });
     socket.on("receiveSingleMessage", (data) => {
       console.log(data);
-      // setReceivedMessages((oldArray) => [...oldArray, data]);
       setReceivedMessage(data.text);
-      // console.log(messages.length);
       setMessages((before) => [...before, data]);
-      // console.log(messages.length);
-      // scroll();
     });
+
+    socket.on("receiveReview", (data) => {
+      console.log("review is " + data);
+      setReview(data);
+    });
+
     socket.on("receiveConversationState", (data) => {
       setConversationState(data);
     });
 
+    socket.on("receiveConversationAccept", (data) => {
+      console.log(data);
+      setAcceptMessageDate(data);
+    });
+
     socket.on("receiveOtherUser", (data) => {
-      setOtherUser(data);
+      if (userType) {
+        setOtherUser(data.customer_name);
+        setMe(data.service_provider_name);
+      } else {
+        setOtherUser(data.service_provider_name);
+        setMe(data.customer_name);
+      }
     });
   }, [socket]);
 
-  //TODO
   useEffect(() => {
-    socket.emit("getConversationState", { convId: convId });
     socket.emit("getAllMessages", { convId: convId });
-    console.log("after emit " + convId);
-  }, []);
-
-  useEffect(() => {
-    socket.emit("getOtherUser", { convId: convId, userType: userType });
+    socket.emit("getConversationData", { convId: convId });
   }, []);
 
   const s = useRef(null);
@@ -186,20 +204,32 @@ export const SingleChat = () => {
     setMessageType(e.target.value);
   };
 
-  function handleNewLines(t) {
-    const text = t;
-    const newText = text.split("\n").map((str) => <p>{str}</p>);
-    return newText;
-  }
+  const handleReviewRequest = (e) => {
+    socket.emit("reviewRequest", {
+      convId: convId,
+      userTypeName: userTypeName,
+      date: new Date(),
+      recipient: otherUser,
+    });
+  };
+
+  const handleReviewAnswer = (score) => {
+    console.log(score);
+    socket.emit("reviewAnswer", {
+      convId: convId,
+      score: score,
+      userTypeName: userTypeName,
+      date: new Date(),
+      recipient: otherUser,
+    });
+  };
 
   return (
     <>
-      {/* <h1 class="unique-component">
-        This should be overview {conversation} of one single chat with convId
-        {convId} and type {userTypeName} and conversation state{" "}
-        {conversationState} with instance number{" "}
-        {document.querySelectorAll(".unique-component").length}
-      </h1> */}
+      <h1>
+        the conversation state is {conversationState} and accepted at{" "}
+        {acceptMessageDate} with review {review}
+      </h1>
 
       {/* <MessageBox>{receivedMessage}</MessageBox>
       <Button
@@ -213,64 +243,270 @@ export const SingleChat = () => {
         scroll down
       </Button> */}
       <Row style={{ width: "100%", justifyContent: "space-between" }}>
-        <SimpleBox style={{ background: "#94a895", border: "2px solid black" }}>
-          {otherUser &&
-            (userType
-              ? otherUser.customer_name
-              : otherUser.service_provider_name)}
+        <SimpleBox
+          style={{
+            fontSize: "20px",
+            background: "#94a895",
+            border: "2px solid black",
+          }}
+        >
+          {otherUser && otherUser.toUpperCase()}
         </SimpleBox>
-        <SimpleBox style={{ background: "#fabf87", border: "2px solid black" }}>
-          {otherUser &&
-            (userType
-              ? otherUser.service_provider_name
-              : otherUser.customer_name)}
+        <SimpleBox
+          style={{
+            fontSize: "20px",
+            background: "#fabf87",
+            border: "2px solid black",
+          }}
+        >
+          ME
         </SimpleBox>
       </Row>
       <MessageFrame>
         {messages &&
           messages.map((mess) => {
-            if (mess.sender_type == userTypeName) {
-              // console.log(mess.base64_file);
-              var fileUrl;
-              mess.base64_file != "" &&
-                (fileUrl = URL.createObjectURL(base64toBlob(mess.base64_file)));
-              return (
-                <MessageBox
-                  style={{
-                    background: "#fabf87",
-                    alignSelf: "end",
-                  }}
-                >
-                  {mess.base64_file != "" && (
-                    <a href={fileUrl}>
-                      <img src={fileUrl} height="200" />
-                    </a>
-                  )}
-                  {mess.text}
-                  <InnerBox>
-                    {new Date(Date.parse(mess.created_at)).toLocaleString()}
-                  </InnerBox>
-                </MessageBox>
-              );
+            if (review > 0 && mess.message_type == "review_request") {
             } else {
-              var fileUrl;
-              mess.base64_file != "" &&
-                (fileUrl = URL.createObjectURL(base64toBlob(mess.base64_file)));
-              return (
-                <MessageBox
-                  style={{ background: "#94a895", alignSelf: "start" }}
-                >
-                  {mess.base64_file != "" && (
-                    <a href={fileUrl}>
-                      <img src={fileUrl} height="200" />
-                    </a>
-                  )}
-                  {mess.text}
-                  <InnerBox>
-                    {new Date(Date.parse(mess.created_at)).toLocaleString()}
-                  </InnerBox>
-                </MessageBox>
-              );
+              if (mess.sender_type == userTypeName) {
+                // console.log(mess.base64_file);
+                var fileUrl;
+                mess.base64_file != "" &&
+                  (fileUrl = URL.createObjectURL(
+                    base64toBlob(mess.base64_file)
+                  ));
+                return (
+                  <MessageBox
+                    key={mess.id}
+                    style={{
+                      alignSelf: "end",
+                    }}
+                  >
+                    {mess.message_type == "quote_offer" && (
+                      <b
+                        style={{
+                          color: "blue",
+                          alignSelf: "center",
+                          padding: "5px",
+                          marginBottom: "10px",
+                        }}
+                      >
+                        you posted quote offer
+                      </b>
+                    )}
+                    {mess.message_type == "accept_quote_message" && (
+                      <b
+                        style={{
+                          color: "green",
+                          alignSelf: "center",
+                          padding: "5px",
+                          marginBottom: "10px",
+                        }}
+                      >
+                        you accepted the quote
+                      </b>
+                    )}
+                    {mess.message_type == "reject_quote_message" && (
+                      <b
+                        style={{
+                          color: "red",
+                          alignSelf: "center",
+                          padding: "5px",
+                          marginBottom: "10px",
+                        }}
+                      >
+                        you rejected the quote
+                      </b>
+                    )}
+                    {mess.message_type == "review_request" && (
+                      <Column>
+                        <i
+                          style={{
+                            color: "black",
+                            alignSelf: "center",
+                            padding: "5px",
+                          }}
+                        >
+                          you requested a review from {otherUserTypeName}{" "}
+                          {otherUser}
+                        </i>
+                        <Row>
+                          <img src={r1} height="40" />
+                          <img src={r2} height="40" />
+                          <img src={r3} height="40" />
+                          <img src={r4} height="40" />
+                          <img src={r5} height="40" />
+                        </Row>
+                      </Column>
+                    )}
+                    {mess.message_type == "review_answer" && (
+                      <Column>
+                        <i
+                          style={{
+                            color: "black",
+                            alignSelf: "center",
+                            padding: "5px",
+                          }}
+                        >
+                          you rated {otherUserTypeName} {otherUser}'s service
+                          with {review}/5
+                        </i>
+                        {review == 1 ? (
+                          <img src={r1} height="40" />
+                        ) : review == 2 ? (
+                          <img src={r2} height="40" />
+                        ) : review == 3 ? (
+                          <img src={r3} height="40" />
+                        ) : review == 4 ? (
+                          <img src={r4} height="40" />
+                        ) : review == 5 ? (
+                          <img src={r5} height="40" />
+                        ) : (
+                          <b>error</b>
+                        )}
+                      </Column>
+                    )}
+                    {mess.base64_file != "" && (
+                      <a href={fileUrl}>
+                        <img src={fileUrl} height="200" />
+                      </a>
+                    )}
+                    {mess.text}
+                    <InnerBox>
+                      {new Date(Date.parse(mess.created_at)).toLocaleString()}
+                    </InnerBox>
+                  </MessageBox>
+                );
+              } else {
+                var fileUrl;
+                mess.base64_file != "" &&
+                  (fileUrl = URL.createObjectURL(
+                    base64toBlob(mess.base64_file)
+                  ));
+                return (
+                  <MessageBox key={mess.id} style={{ alignSelf: "start" }}>
+                    {mess.message_type == "quote_offer" && (
+                      <b
+                        style={{
+                          color: "blue",
+                          alignSelf: "center",
+                          padding: "5px",
+                          marginBottom: "10px",
+                        }}
+                      >
+                        {otherUserTypeName} {otherUser} posted quote offer
+                      </b>
+                    )}
+                    {mess.message_type == "accept_quote_message" && (
+                      <b
+                        style={{
+                          color: "green",
+                          alignSelf: "center",
+                          padding: "5px",
+                          marginBottom: "10px",
+                        }}
+                      >
+                        {otherUserTypeName} {otherUser} accepted the quote
+                      </b>
+                    )}
+                    {mess.message_type == "reject_quote_message" && (
+                      <b
+                        style={{
+                          color: "red",
+                          alignSelf: "center",
+                          padding: "5px",
+                          marginBottom: "10px",
+                        }}
+                      >
+                        {otherUserTypeName} {otherUser} rejected the quote
+                      </b>
+                    )}
+                    {mess.message_type == "review_request" && (
+                      <Column>
+                        <i
+                          style={{
+                            color: "black",
+                            alignSelf: "center",
+                            padding: "5px",
+                          }}
+                        >
+                          {otherUserTypeName} {otherUser} kindly asks you for a
+                          review
+                        </i>
+                        <Row>
+                          <img
+                            src={r1}
+                            height="40"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => handleReviewAnswer(1)}
+                          />
+                          <img
+                            src={r2}
+                            height="40"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => handleReviewAnswer(2)}
+                          />
+                          <img
+                            src={r3}
+                            height="40"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => handleReviewAnswer(3)}
+                          />
+                          <img
+                            src={r4}
+                            height="40"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => handleReviewAnswer(4)}
+                          />
+                          <img
+                            src={r5}
+                            height="40"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => handleReviewAnswer(5)}
+                          />
+                        </Row>
+                      </Column>
+                    )}
+                    {mess.message_type == "review_answer" && (
+                      <Column>
+                        <i
+                          style={{
+                            color: "black",
+                            alignSelf: "center",
+                            padding: "5px",
+                          }}
+                        >
+                          {otherUserTypeName} {otherUser} rated your service
+                          with {review}
+                          /5
+                        </i>
+
+                        {review == 1 ? (
+                          <img src={r1} height="40" />
+                        ) : review == 2 ? (
+                          <img src={r2} height="40" />
+                        ) : review == 3 ? (
+                          <img src={r3} height="40" />
+                        ) : review == 4 ? (
+                          <img src={r4} height="40" />
+                        ) : review == 5 ? (
+                          <img src={r5} height="40" />
+                        ) : (
+                          <b>error</b>
+                        )}
+                      </Column>
+                    )}
+                    {mess.base64_file != "" && (
+                      <a href={fileUrl}>
+                        <img src={fileUrl} height="200" />
+                      </a>
+                    )}
+                    {mess.text}
+                    <InnerBox>
+                      {new Date(Date.parse(mess.created_at)).toLocaleString()}
+                    </InnerBox>
+                  </MessageBox>
+                );
+              }
             }
           })}
         <div ref={s}></div>
@@ -314,7 +550,7 @@ export const SingleChat = () => {
                   ></input>
                   normal message
                 </div>
-                <div>
+                <div style={{ color: "green" }}>
                   <input
                     type="radio"
                     value="accept_quote_message"
@@ -322,7 +558,7 @@ export const SingleChat = () => {
                   ></input>
                   accept offer
                 </div>
-                <div>
+                <div style={{ color: "red" }}>
                   <input
                     type="radio"
                     value="reject_quote_message"
@@ -332,7 +568,7 @@ export const SingleChat = () => {
                 </div>
               </Column>
             )}
-            {conversationState == "quoted" && userType == 1 && (
+            {userType == 1 && conversationState == "quoted" && (
               <Column onChange={onChangeRadio}>
                 <div>
                   <input
@@ -342,7 +578,7 @@ export const SingleChat = () => {
                   ></input>
                   normal message
                 </div>
-                <div>
+                <div style={{ color: "blue" }}>
                   <input
                     type="radio"
                     value="quote_offer"
@@ -352,18 +588,18 @@ export const SingleChat = () => {
                 </div>
               </Column>
             )}
+
+            {userType == 1 &&
+              conversationState == "accepted" &&
+              review == -1 &&
+              Date.now() >
+                new Date(Date.parse(acceptMessageDate)).getTime() +
+                  604800000 && (
+                <Button onClick={handleReviewRequest}>request review</Button>
+              )}
             <OverRideButton onClick={handleSend}>send</OverRideButton>
           </Row>
         )}
-
-      {/* <Row style={{ width: "100%", justifyContent: "space-between" }}>
-        <SimpleBox style={{ background: "#94a895", border: "2px solid black" }}>
-          you
-        </SimpleBox>
-        <SimpleBox style={{ background: "#fabf87", border: "2px solid black" }}>
-          me
-        </SimpleBox>
-      </Row> */}
     </>
   );
 };

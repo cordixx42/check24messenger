@@ -3,13 +3,9 @@ const app = express();
 const http = require("http").Server(app);
 const cors = require("cors");
 const mongoose = require("mongoose");
-// const {
-//   conversationSchema,
-//   messageSchema,
-// } = require("./tests/initialDataLoad");
 
 //TOOD change this
-nextMessageId = 8;
+nextMessageId = 99;
 
 app.use(cors());
 
@@ -22,6 +18,8 @@ const conversationSchema = new mongoose.Schema({
   state: String,
   created_at: Date,
   updated_at: Date,
+  accepted_at: Date,
+  review: Number,
 });
 
 // read_at as string because it can also be not read yet === ""
@@ -129,11 +127,11 @@ io.on("connection", (socket) => {
     console.log(activeUsersToSockets);
   });
 
-  socket.on("getConversationState", async (data) => {
+  socket.on("getConversationInfos", async (data) => {
     console.log("conv state inquiry");
     console.log(data.convId);
-    conv = await Conversation.find({ id: data.convId }, "state");
-    socket.emit("receiveConversationState", conv[0].state);
+    conv = await Conversation.find({ id: data.convId }, "state accepted_at");
+    socket.emit("receiveConversationInfos", conv[0]);
   });
 
   socket.on("getOtherUser", async (data) => {
@@ -144,13 +142,21 @@ io.on("connection", (socket) => {
     socket.emit("receiveOtherUser", conv[0]);
   });
 
+  socket.on("getConversationData", async (data) => {
+    conv = await Conversation.find({ id: data.convId });
+    socket.emit("receiveConversationState", conv[0].state);
+    socket.emit("receiveConversationAccept", conv[0].accepted_at);
+    socket.emit("receiveOtherUser", conv[0]);
+    socket.emit("receiveReview", conv[0].review);
+  });
+
   socket.on("sendSingleMessage", async (data) => {
     console.log("message came");
     console.log(data);
     var conv;
     var recipient;
     var userTypeName;
-    // find out correct recipient of message
+    // TODO make more beautiful by sending more arg !!! find out correct recipient of message
     if (data.userType) {
       userTypeName = "service_provider";
       conv = await Conversation.find({ id: data.convId }, "customer_name");
@@ -166,10 +172,6 @@ io.on("connection", (socket) => {
 
     console.log(conv);
     console.log(recipient);
-
-    // TODO check if message includes base64
-
-    // TODO save message into database message doc
 
     var m = new Message({
       id: nextMessageId,
@@ -200,24 +202,37 @@ io.on("connection", (socket) => {
         console.log("saving not successful");
         console.log(err);
       });
+
+    //update updated_at
+    const filter = { id: data.convId };
+    const update = { updated_at: m.created_at };
+    await Conversation.findOneAndUpdate(filter, update);
+
     //update conversation state if neccesary
     var convState = "";
     if (m.message_type == "reject_quote_message") {
       const filter = { id: data.convId };
-      const update = { state: "rejected", updated_at: m.created_at };
+      const update = { state: "rejected" };
       await Conversation.findOneAndUpdate(filter, update);
       convState = "rejected";
     } else if (m.message_type == "accept_quote_message") {
       const filter = { id: data.convId };
-      const update = { state: "accepted", updated_at: m.created_at };
+      const update = {
+        state: "accepted",
+        accepted_at: m.created_at,
+      };
       await Conversation.findOneAndUpdate(filter, update);
       convState = "accepted";
     }
 
     convState != "" && socket.emit("receiveConversationState", convState);
+    convState == "accepted" &&
+      socket.emit("receiveConversationAccept", m.created_at);
     const recSocket = activeUsersToSockets[recipient];
     if (convState != "" && recSocket != undefined) {
       io.to(recSocket).emit("receiveConversationState", convState);
+      convState == "accepted" &&
+        io.to(recSocket).emit("receiveConversationAccept", m.created_at);
     }
 
     console.log("beforeIncrement");
@@ -231,6 +246,102 @@ io.on("connection", (socket) => {
       created_at: 1,
     });
     socket.emit("receiveAllMessages", mess);
+  });
+
+  socket.on("reviewRequest", async (data) => {
+    var m = new Message({
+      id: nextMessageId,
+      conversation_id: data.convId,
+      message_type: "review_request",
+      text: "",
+      sender_type: data.userTypeName,
+      read_at: null,
+      created_at: data.date,
+      updated_at: data.date,
+      base64_file: "",
+    });
+
+    const recipient = data.recipient;
+
+    m.save()
+      .then(function (data) {
+        //send back to sender
+        socket.emit("receiveSingleMessage", data);
+        // try send to recipient if existing in active sockets
+        const recSocket = activeUsersToSockets[recipient];
+        if (recSocket != undefined) {
+          io.to(recSocket).emit("receiveSingleMessage", data);
+        }
+      })
+      .catch(function (err) {
+        console.log("saving not successful");
+        console.log(err);
+      });
+
+    nextMessageId++;
+
+    //update conversation review to 0
+    const filter = { id: data.convId };
+    const update = {
+      review: 0,
+      updated_at: m.created_at,
+    };
+    await Conversation.findOneAndUpdate(filter, update);
+    //send back to sender
+    socket.emit("receiveReview", 0);
+    // try send to recipient if existing in active sockets
+    const recSocket = activeUsersToSockets[recipient];
+    if (recSocket != undefined) {
+      io.to(recSocket).emit("receiveReview", 0);
+    }
+  });
+
+  socket.on("reviewAnswer", async (data) => {
+    var m = new Message({
+      id: nextMessageId,
+      conversation_id: data.convId,
+      message_type: "review_answer",
+      text: "",
+      sender_type: data.userTypeName,
+      read_at: null,
+      created_at: data.date,
+      updated_at: data.date,
+      base64_file: "",
+    });
+
+    const recipient = data.recipient;
+
+    //update conversation review to score
+    const filter = { id: data.convId };
+    const update = {
+      review: data.score,
+      updated_at: m.created_at,
+    };
+    await Conversation.findOneAndUpdate(filter, update);
+    //send back to sender
+    socket.emit("receiveReview", data.score);
+    // try send to recipient if existing in active sockets
+    const recSocket = activeUsersToSockets[recipient];
+    if (recSocket != undefined) {
+      io.to(recSocket).emit("receiveReview", data.score);
+    }
+
+    m.save()
+      .then(function (data) {
+        //send back to sender
+        socket.emit("receiveSingleMessage", data);
+        // try send to recipient if existing in active sockets
+        const recSocket = activeUsersToSockets[recipient];
+        if (recSocket != undefined) {
+          io.to(recSocket).emit("receiveSingleMessage", data);
+        }
+      })
+      .catch(function (err) {
+        console.log("saving not successful");
+        console.log(err);
+      });
+
+    nextMessageId++;
   });
 
   socket.on("disconnect", () => {

@@ -81,7 +81,7 @@ export const UserIdentification = ({}) => {
           value={defaultOption}
           placeholder="Select what user type you are"
         />
-        <Button onClick={handleSubmit}>submit</Button>
+        <Button onClick={handleSubmit}>LOGIN</Button>
       </Column>
     </StyledContainer>
   );
