@@ -43,11 +43,7 @@ export const Chat = ({ handleUnreadMessages }) => {
   //trigger to remove unread banner when message sent
   const [removeUnreadTrigger, setRemoveUnreadTrigger] = useState(false);
 
-  //trigger to scroll to bottom if typing
-
   var unMounted = false;
-
-  const chatBottom = useRef(null);
 
   const handleCurrentMessage = (e) => {
     setCurrentMessage(e.target.value);
@@ -127,8 +123,6 @@ export const Chat = ({ handleUnreadMessages }) => {
 
   useEffect(() => {
     socket.on("receiveAllMessages", (data) => {
-      //   console.log("received initial messages");
-      //   console.log(data);
       if (!unMounted) {
         setMessages(data);
       }
@@ -189,13 +183,6 @@ export const Chat = ({ handleUnreadMessages }) => {
     socket.emit("getAllMessages", { convId: convId });
     socket.emit("getConversationData", { convId: convId });
   }, []);
-
-  //   const chatBottom = useRef(null);
-  //   const unreadBottom = useRef(null);
-  //   useEffect(() => {
-  //     chatBottom.current &&
-  //       chatBottom.current.scrollIntoView({ behavior: "smooth", block: "end" });
-  //   }, []);
 
   useEffect(() => {
     console.log("chat mounting" + convId);
@@ -263,8 +250,6 @@ export const Chat = ({ handleUnreadMessages }) => {
           otherUserTypeName={otherUserTypeName}
           otherUser={otherUser}
           review={review}
-          chatBottom={chatBottom}
-          //   unreadBottom={unreadBottom}
           handleReviewAnswer={handleReviewAnswer}
           base64toBlob={base64toBlob}
           conversationState={conversationState}

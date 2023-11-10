@@ -87,8 +87,6 @@ export const Messages = ({
   otherUserTypeName,
   otherUser,
   review,
-  chatBottom,
-  // unreadBottom,
   handleReviewAnswer,
   base64toBlob,
   conversationState,
@@ -97,16 +95,26 @@ export const Messages = ({
 }) => {
   var firstUnreadId = -1;
   const [scrolled, setScrolled] = useState(false);
+  const chatBottom = useRef(null);
   const unreadBottom = useRef(null);
+  const realBottom = useRef(null);
 
   useEffect(() => {
-    unreadBottom.current
+    realBottom.current
+      ? realBottom.current.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+        })
+      : unreadBottom.current
       ? unreadBottom.current.scrollIntoView({
           behavior: "smooth",
           block: "end",
         })
       : chatBottom.current &&
-        chatBottom.current.scrollIntoView({ behavior: "smooth", block: "end" });
+        chatBottom.current.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+        });
   });
 
   useEffect(() => {
@@ -116,8 +124,17 @@ export const Messages = ({
     };
   }, []);
 
+  const handleScroll = (e) => {
+    const bottom =
+      e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight;
+
+    if (unreadBottom.current && bottom) {
+      setScrolled(true);
+    }
+  };
+
   return (
-    <MessageFrame>
+    <MessageFrame onScroll={handleScroll}>
       {messages &&
         messages.map((mess, idx) => {
           if (review > 0 && mess.message_type == "review_request") {
@@ -271,8 +288,8 @@ export const Messages = ({
                         <img src={fileUrl} height="200" />
                       </a>
                     )}
-                    {/* also mask when rejected ?   */}
-                    {conversationState == ("quoted" || "rejected")
+                    {conversationState == "quoted" ||
+                    conversationState == "rejected"
                       ? maskSensibleInformation(mess.text)
                       : mess.text}
                     <InnerBox>
@@ -302,9 +319,13 @@ export const Messages = ({
                   {firstUnread && (
                     <DateBox
                       ref={unreadBottom}
-                      style={{ width: "100%", textAlign: "center" }}
+                      style={{
+                        width: "100%",
+                        textAlign: "center",
+                        fontWeight: "bold",
+                      }}
                     >
-                      UNREAD
+                      UNREAD MESSAGES
                     </DateBox>
                   )}
                   <MessageBox key={mess.id} style={{ alignSelf: "start" }}>
@@ -424,8 +445,8 @@ export const Messages = ({
                         <img src={fileUrl} height="200" />
                       </a>
                     )}
-                    {/* TODO also mask when rejected  */}
-                    {conversationState == ("quoted" || "rejected")
+                    {conversationState == "quoted" ||
+                    conversationState == "rejected"
                       ? maskSensibleInformation(mess.text)
                       : mess.text}
                     <InnerBox>
@@ -444,6 +465,7 @@ export const Messages = ({
           }
         })}
       <div ref={chatBottom}></div>
+      {scrolled && <div ref={realBottom}></div>}
     </MessageFrame>
   );
 };
