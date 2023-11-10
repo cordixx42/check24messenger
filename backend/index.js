@@ -4,7 +4,6 @@ const http = require("http").Server(app);
 const cors = require("cors");
 const mongoose = require("mongoose");
 
-//TOOD change this
 nextMessageId = 99;
 
 app.use(cors());
@@ -22,7 +21,6 @@ const conversationSchema = new mongoose.Schema({
   review: Number,
 });
 
-// read_at as string because it can also be not read yet === ""
 const messageSchema = new mongoose.Schema({
   id: Number,
   conversation_id: Number,
@@ -41,9 +39,6 @@ const Message = mongoose.model("Message", messageSchema);
 
 // key-value pair to save userName-socketId
 const activeUsersToSockets = {};
-// TODO idea for taking into account that a person can be both customer and client
-const activeCustomersToSockets = {};
-const activeProvidersToSockets = {};
 
 const io = require("socket.io")(http, {
   cors: {
@@ -85,13 +80,11 @@ app.get("/conversations", async (req, res) => {
 
   //depending on type fetch based on customer / service-provider
   if (type == "1") {
-    //console.log("service provider");
     conv = await Conversation.find(
       { service_provider_name: name },
       "id customer_name service_provider_name state"
     );
   } else {
-    //console.log("customer");
     conv = await Conversation.find(
       { customer_name: name },
       "id customer_name service_provider_name state"
@@ -109,9 +102,6 @@ app.get("/messages", async (req, res) => {
       created_at: -1,
     })
     .limit(100);
-
-  // console.log(mess[0]);
-
   res.send(mess);
 });
 
@@ -127,13 +117,6 @@ io.on("connection", (socket) => {
     activeUsersToSockets[data.userName] = data.socketId;
     console.log(activeUsersToSockets);
   });
-
-  // socket.on("getConversationInfos", async (data) => {
-  //   console.log("conv state inquiry");
-  //   console.log(data.convId);
-  //   conv = await Conversation.find({ id: data.convId }, "state accepted_at");
-  //   socket.emit("receiveConversationInfos", conv[0]);
-  // });
 
   socket.on("getOtherUser", async (data) => {
     conv = await Conversation.find(
@@ -166,7 +149,6 @@ io.on("connection", (socket) => {
     var conv;
     var recipient;
     var userTypeName;
-    // TODO make more beautiful by sending more arg !!! find out correct recipient of message
     if (data.userType) {
       userTypeName = "service_provider";
       conv = await Conversation.find({ id: data.convId }, "customer_name");
@@ -272,6 +254,7 @@ io.on("connection", (socket) => {
     socket.emit("receiveAllMessages", mess);
   });
 
+  //TODO
   socket.on("getMessagesForPage", async (data) => {
     console.log("clients loading initial messages");
     const convId = data.convId;
@@ -410,7 +393,15 @@ io.on("connection", (socket) => {
       };
       await Message.findOneAndUpdate(filter, update);
     }
-    socket.emit("unreadUpdateDone", {});
+  });
+
+  socket.on("singleUnreadUpdate", async (data) => {
+    console.log("single id " + data);
+    const filter = { id: data };
+    const update = {
+      was_read: 1,
+    };
+    await Message.findOneAndUpdate(filter, update);
   });
 
   socket.on("disconnect", () => {

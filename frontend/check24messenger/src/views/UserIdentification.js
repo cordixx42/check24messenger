@@ -1,4 +1,4 @@
-import { useNavigate, Routes, Route } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
   Button,
@@ -8,13 +8,10 @@ import {
 } from "../style/components";
 import Dropdown from "react-dropdown";
 import "react-dropdown/style.css";
-import { Test } from "./TestView";
 
 export const UserIdentification = ({}) => {
   const navigate = useNavigate();
-  // <Routes>
-  //   <Route path="/test" element={<Test />} />
-  // </Routes>;
+
   const [userName, setUserName] = useState("");
   const [userType, setUserType] = useState("customer");
 

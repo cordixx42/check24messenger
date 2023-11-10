@@ -1,18 +1,12 @@
 import { useNavigate, Route, Routes } from "react-router-dom";
 import { useParams } from "react-router-dom";
-import { useState, useEffect, useContext, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import React from "react";
 import { Column, Row, Button, SimpleBox } from "../style/components";
 import { styled } from "styled-components";
 import { Default } from "./DefaultView";
-import { Outlet } from "react-router-dom";
-import socketIO from "socket.io-client";
-import { SingleChat } from "./SingleChat";
 import { Chat } from "./Chat";
 import { socket } from "../socket";
-
-// const url = "http://localhost:3001";
-// export const socket = socketIO.connect(url);
 
 const RowWithoutGap = styled(Row)`
   gap: 0px;
@@ -64,7 +58,7 @@ export const ChatOverview = () => {
   //initial identification now here, mounting triggers reidentifying
   useEffect(() => {
     socket.on("connect", () => {
-      console.log("connected with id " + socket.id); // x8WIv7-mJelg7on_ALbx
+      console.log("connected with id " + socket.id);
       socket.emit("initialIdentfication", {
         socketId: socket.id,
         userName: userName,
@@ -106,7 +100,7 @@ export const ChatOverview = () => {
     if (currentConv != 0) {
       console.log("switch to profiles");
       setCurrentConv(0);
-      navigate("/" + userinfo + "/default");
+      navigate("/" + userinfo);
     }
   };
 
@@ -116,19 +110,7 @@ export const ChatOverview = () => {
 
   //unread messages of current conv
   const [unreadMessageIds, setUnreadMessageIds] = useState([]);
-  // const [trigger, setTrigger] = useState(false);
-  // const [unreadMessageDates, setUnreadMessageDates] = useState([]);
 
-  // const handleUnreadMessages = useCallback(
-  //   (messId) => (e) => {
-  //     console.log("handleUnread in Chatoverview");
-  //     setUnreadMessageIds((before) => [...before, messId]);
-  //   },
-  //   []
-  // );
-
-  //still INFINITE LOOP
-  // PROBLEM
   const handleUnreadMessages = useCallback(
     (messId) => {
       console.log("handleUnread called in chatoverview with messid " + messId);
@@ -140,10 +122,6 @@ export const ChatOverview = () => {
     },
     [unreadMessageIds]
   );
-
-  // useEffect(() => {
-  //   console.log("unreadMessageIds array is changing to " + unreadMessageIds);
-  // }, [unreadMessageIds]);
 
   //update server database that was read changed
   useEffect(() => {
@@ -158,11 +136,6 @@ export const ChatOverview = () => {
 
   return (
     <>
-      {/* <h1>
-        This should be overview page of all chats of user "{userinfo}" with name
-        "{userName}" and type "{userType}"
-      </h1> */}
-
       <RowWithoutGap>
         <ConversationBar>
           <div
@@ -220,7 +193,6 @@ export const ChatOverview = () => {
                 />
               }
             />
-            <Route path="default" element={<Default />} />
           </Routes>
         </DetailedChatArea>
       </RowWithoutGap>

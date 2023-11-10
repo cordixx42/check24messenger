@@ -40,7 +40,14 @@ export const Chat = ({ handleUnreadMessages }) => {
 
   const [messageType, setMessageType] = useState("");
 
-  const [trigger, setTrigger] = useState(false);
+  //trigger to remove unread banner when message sent
+  const [removeUnreadTrigger, setRemoveUnreadTrigger] = useState(false);
+
+  //trigger to scroll to bottom if typing
+
+  var unMounted = false;
+
+  const chatBottom = useRef(null);
 
   const handleCurrentMessage = (e) => {
     setCurrentMessage(e.target.value);
@@ -115,50 +122,53 @@ export const Chat = ({ handleUnreadMessages }) => {
     setFile(null);
     setBase64("");
     setMessageType("");
-    setTrigger(true);
+    setRemoveUnreadTrigger(true);
   };
 
   useEffect(() => {
     socket.on("receiveAllMessages", (data) => {
       //   console.log("received initial messages");
       //   console.log(data);
-      setMessages(data);
+      if (!unMounted) {
+        setMessages(data);
+      }
     });
     socket.on("receiveSingleMessage", (data) => {
-      if (data.conversation_id == convId) {
+      if (!unMounted && data.conversation_id == convId) {
+        console.log("conv id is " + convId);
         console.log(data);
         setReceivedMessage(data.text);
         var readData = data;
         //if message was sent by other one this one read it now for the first time
-        // if (data.sender_type == otherUserTypeName) {
-        //   handleUnreadMessages(data.id);
-        //   readData.was_read = 1;
-        // }
+        if (data.sender_type == otherUserTypeName) {
+          socket.emit("singleUnreadUpdate", data.id);
+          readData.was_read = 1;
+        }
         setMessages((before) => [...before, readData]);
       }
     });
 
     socket.on("receiveReview", (data) => {
-      if (data.convId == convId) {
+      if (!unMounted && data.convId == convId) {
         console.log("review is " + data);
         setReview(data.review);
       }
     });
 
     socket.on("receiveConversationState", (data) => {
-      if (data.convId == convId) {
+      if (!unMounted && data.convId == convId) {
         setConversationState(data.state);
       }
     });
 
     socket.on("receiveConversationAccept", (data) => {
-      if (data.convId == convId) {
+      if (!unMounted && data.convId == convId) {
         setAcceptMessageDate(data.date);
       }
     });
 
     socket.on("receiveOtherUser", (data) => {
-      if (data.id == convId) {
+      if (!unMounted && data.id == convId) {
         if (userType) {
           setOtherUser(data.customer_name);
           setMe(data.service_provider_name);
@@ -169,9 +179,10 @@ export const Chat = ({ handleUnreadMessages }) => {
       }
     });
 
-    // socket.on("unreadUpdateDone", () => {
-    //   socket.emit("getAllMessages", { convId: convId });
-    // });
+    return () => {
+      console.log("use effect unmounting" + convId);
+      unMounted = true;
+    };
   }, [socket]);
 
   useEffect(() => {
@@ -252,13 +263,13 @@ export const Chat = ({ handleUnreadMessages }) => {
           otherUserTypeName={otherUserTypeName}
           otherUser={otherUser}
           review={review}
-          //   chatBottom={chatBottom}
+          chatBottom={chatBottom}
           //   unreadBottom={unreadBottom}
           handleReviewAnswer={handleReviewAnswer}
           base64toBlob={base64toBlob}
           conversationState={conversationState}
           handleUnreadMessages={handleUnreadMessages}
-          trigger={trigger}
+          removeUnreadTrigger={removeUnreadTrigger}
         />
       )}
       {/* blend out input field if state rejected */}

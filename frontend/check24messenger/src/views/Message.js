@@ -1,5 +1,5 @@
 import React from "react";
-import { memo, useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Row, Column } from "../style/components";
 import styled from "styled-components";
 import r1 from "../imgs/review1.jpeg";
@@ -44,9 +44,6 @@ const DateBox = styled.div`
 `;
 
 const maskSensibleInformation = (text) => {
-  // TODO email: contains@
-  // TODO telephone contains+
-  // TODO URL contains http
   let emailPattern = /([\w-\.]+)@([\w-]+\.)+[\w-]{2,4}/g;
 
   let phonePattern =
@@ -61,21 +58,21 @@ const maskSensibleInformation = (text) => {
   var z;
 
   while (null != (z = emailPattern.exec(text))) {
-    console.log("exec " + z); // output: object
+    console.log("exec " + z);
     const len = z[1].length;
     console.log(len);
     maskedText = maskedText.replace(z[1], star.repeat(len));
   }
 
   while (null != (z = phonePattern.exec(text))) {
-    console.log("exec " + z); // output: object
+    console.log("exec " + z);
     const len = z[1].length;
     console.log(len);
     maskedText = maskedText.replace(z[1], star.repeat(len));
   }
 
   while (null != (z = urlPattern.exec(text))) {
-    console.log("exec " + z); // output: object
+    console.log("exec " + z);
     const len = z[0].length;
     console.log(len);
     maskedText = maskedText.replace(z[0], star.repeat(len));
@@ -90,31 +87,35 @@ export const Messages = ({
   otherUserTypeName,
   otherUser,
   review,
-  // chatBottom,
+  chatBottom,
   // unreadBottom,
   handleReviewAnswer,
   base64toBlob,
   conversationState,
   handleUnreadMessages,
-  trigger,
+  removeUnreadTrigger,
 }) => {
   var firstUnreadId = -1;
   const [scrolled, setScrolled] = useState(false);
-  const chatBottom = useRef(null);
   const unreadBottom = useRef(null);
 
   useEffect(() => {
-    chatBottom.current &&
-      chatBottom.current.scrollIntoView({ behavior: "smooth", block: "end" });
+    unreadBottom.current
+      ? unreadBottom.current.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+        })
+      : chatBottom.current &&
+        chatBottom.current.scrollIntoView({ behavior: "smooth", block: "end" });
   });
 
-  // useEffect(() => {
-  //   if (!scrolled) {
-  //     chatBottom.current &&
-  //       chatBottom.current.scrollIntoView({ behavior: "smooth", block: "end" });
-  //   }
-  //   setScrolled(true);
-  // }, [scrolled]);
+  useEffect(() => {
+    console.log("messages mounting");
+    return () => {
+      console.log("messages unmounting");
+    };
+  }, []);
+
   return (
     <MessageFrame>
       {messages &&
@@ -140,7 +141,7 @@ export const Messages = ({
             const thisDate = new Date(Date.parse(messages[idx].created_at));
             const thisRead = messages[idx].was_read == 1;
 
-            // edge case review answer
+            // case message is  review answer
             const dateChange =
               idx == 0 ||
               (idx > 0 &&
@@ -150,6 +151,7 @@ export const Messages = ({
 
             const unread = mess.sender_type == otherUserTypeName && !thisRead;
             const firstUnread =
+              !removeUnreadTrigger &&
               firstUnreadId == -1 &&
               mess.sender_type == otherUserTypeName &&
               ((idx == 0 && !thisRead) || (idx > 0 && prevRead && !thisRead));
@@ -269,17 +271,14 @@ export const Messages = ({
                         <img src={fileUrl} height="200" />
                       </a>
                     )}
-                    {/* TODO also mask when rejected ?   */}
-                    {conversationState == "quoted"
+                    {/* also mask when rejected ?   */}
+                    {conversationState == ("quoted" || "rejected")
                       ? maskSensibleInformation(mess.text)
                       : mess.text}
                     <InnerBox>
                       {new Date(Date.parse(mess.created_at)).toLocaleString(
                         [],
                         {
-                          // year: "numeric",
-                          // month: "numeric",
-                          // day: "numeric",
                           hour: "2-digit",
                           minute: "2-digit",
                         }
@@ -302,7 +301,7 @@ export const Messages = ({
                   )}
                   {firstUnread && (
                     <DateBox
-                      // ref={chatBottom}
+                      ref={unreadBottom}
                       style={{ width: "100%", textAlign: "center" }}
                     >
                       UNREAD
@@ -426,16 +425,13 @@ export const Messages = ({
                       </a>
                     )}
                     {/* TODO also mask when rejected  */}
-                    {conversationState == "quoted"
+                    {conversationState == ("quoted" || "rejected")
                       ? maskSensibleInformation(mess.text)
                       : mess.text}
                     <InnerBox>
                       {new Date(Date.parse(mess.created_at)).toLocaleString(
                         [],
                         {
-                          // year: "numeric",
-                          // month: "numeric",
-                          // day: "numeric",
                           hour: "2-digit",
                           minute: "2-digit",
                         }
@@ -448,7 +444,6 @@ export const Messages = ({
           }
         })}
       <div ref={chatBottom}></div>
-      {/* {firstUnreadId == -1 && <div ref={chatBottom}></div>} */}
     </MessageFrame>
   );
 };

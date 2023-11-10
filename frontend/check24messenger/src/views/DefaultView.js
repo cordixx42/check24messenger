@@ -1,5 +1,3 @@
-import { useNavigate } from "react-router-dom";
-import { useState } from "react";
 import logo from "../imgs/check24-logo.jpeg";
 import { Column } from "../style/components";
 import styled from "styled-components";
