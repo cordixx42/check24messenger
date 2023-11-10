@@ -70,7 +70,7 @@ export const UserIdentification = ({}) => {
   return (
     <StyledContainer>
       <Column>
-        <h1> Welcome to the CHECK24 Web Messenger </h1>
+        <h1> Welcome to the CHECK24 Chat Messenger </h1>
         <LoginInputField
           placeholder="Please enter your name"
           onChange={handleName}

@@ -35,3 +35,5 @@ can conversation switch from "accepted" or "rejected" back to "quoted" ?
 -> masking better regular expressions
 
 -> login system with creation of new users
+
+-> more personal user information

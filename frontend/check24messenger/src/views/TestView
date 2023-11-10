@@ -1,6 +1,6 @@
-export const Test = ({ s }) => {
+export const NotFound = ({}) => {
   console.log("in test");
-  return <div>test viewddddd {s}</div>;
+  return <h1>USER NOT FOUND</h1>;
 };
 
 // not go through router but directly child component

@@ -11,6 +11,7 @@ import { UserIdentification } from "./views/UserIdentification";
 import { Default } from "./views/DefaultView";
 import { Button } from "./style/components";
 import { socket } from "./socket";
+import { NotFound } from "./views/NotFound";
 
 function App() {
   return (
@@ -19,7 +20,7 @@ function App() {
       <Routes>
         <Route path="/" element={<UserIdentification />}></Route>
         <Route path="/:userinfo/*" element={<ChatOverview />}></Route>
-        <Route path="/notfound" element={<Default />}></Route>
+        <Route path="/notfound" element={<NotFound />}></Route>
       </Routes>
     </BrowserRouter>
     // </SocketContext.Provider>

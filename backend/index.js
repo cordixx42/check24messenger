@@ -29,10 +29,11 @@ const messageSchema = new mongoose.Schema({
   message_type: String,
   text: String,
   sender_type: String,
-  read_at: String,
+  read_at: Date,
   created_at: Date,
   updated_at: Date,
   base64_file: String,
+  was_read: Number,
 });
 
 const Conversation = mongoose.model("Conversation", conversationSchema);
@@ -127,27 +128,36 @@ io.on("connection", (socket) => {
     console.log(activeUsersToSockets);
   });
 
-  socket.on("getConversationInfos", async (data) => {
-    console.log("conv state inquiry");
-    console.log(data.convId);
-    conv = await Conversation.find({ id: data.convId }, "state accepted_at");
-    socket.emit("receiveConversationInfos", conv[0]);
-  });
+  // socket.on("getConversationInfos", async (data) => {
+  //   console.log("conv state inquiry");
+  //   console.log(data.convId);
+  //   conv = await Conversation.find({ id: data.convId }, "state accepted_at");
+  //   socket.emit("receiveConversationInfos", conv[0]);
+  // });
 
   socket.on("getOtherUser", async (data) => {
     conv = await Conversation.find(
       { id: data.convId },
-      "customer_name service_provider_name"
+      "id customer_name service_provider_name"
     );
     socket.emit("receiveOtherUser", conv[0]);
   });
 
   socket.on("getConversationData", async (data) => {
     conv = await Conversation.find({ id: data.convId });
-    socket.emit("receiveConversationState", conv[0].state);
-    socket.emit("receiveConversationAccept", conv[0].accepted_at);
+    socket.emit("receiveConversationState", {
+      convId: data.convId,
+      state: conv[0].state,
+    });
+    socket.emit("receiveConversationAccept", {
+      convId: data.convId,
+      date: conv[0].accepted_at,
+    });
     socket.emit("receiveOtherUser", conv[0]);
-    socket.emit("receiveReview", conv[0].review);
+    socket.emit("receiveReview", {
+      convId: data.convId,
+      review: conv[0].review,
+    });
   });
 
   socket.on("sendSingleMessage", async (data) => {
@@ -183,6 +193,7 @@ io.on("connection", (socket) => {
       created_at: data.date,
       updated_at: data.date,
       base64_file: data.withFile ? data.fileBase64 : "",
+      was_read: 0,
     });
 
     m.save()
@@ -225,14 +236,27 @@ io.on("connection", (socket) => {
       convState = "accepted";
     }
 
-    convState != "" && socket.emit("receiveConversationState", convState);
+    convState != "" &&
+      socket.emit("receiveConversationState", {
+        convId: data.convId,
+        state: convState,
+      });
     convState == "accepted" &&
-      socket.emit("receiveConversationAccept", m.created_at);
+      socket.emit("receiveConversationAccept", {
+        convId: data.convId,
+        date: m.created_at,
+      });
     const recSocket = activeUsersToSockets[recipient];
     if (convState != "" && recSocket != undefined) {
-      io.to(recSocket).emit("receiveConversationState", convState);
+      io.to(recSocket).emit("receiveConversationState", {
+        convId: data.convId,
+        state: convState,
+      });
       convState == "accepted" &&
-        io.to(recSocket).emit("receiveConversationAccept", m.created_at);
+        io.to(recSocket).emit("receiveConversationAccept", {
+          convId: data.convId,
+          date: m.created_at,
+        });
     }
 
     console.log("beforeIncrement");
@@ -248,6 +272,22 @@ io.on("connection", (socket) => {
     socket.emit("receiveAllMessages", mess);
   });
 
+  socket.on("getMessagesForPage", async (data) => {
+    console.log("clients loading initial messages");
+    const convId = data.convId;
+    //TODO currently firstDate is id, assumes that id grow monotonously, but better to do with creation dates
+    const firstDate = data.firstDate;
+    const mess = await Message.find({
+      conversation_id: convId,
+      id: { $gte: firstDate },
+    })
+      .sort({
+        created_at: 1,
+      })
+      .limit(25);
+    socket.emit("receiveMessagesForPage", mess);
+  });
+
   socket.on("reviewRequest", async (data) => {
     var m = new Message({
       id: nextMessageId,
@@ -259,6 +299,7 @@ io.on("connection", (socket) => {
       created_at: data.date,
       updated_at: data.date,
       base64_file: "",
+      was_read: 0,
     });
 
     const recipient = data.recipient;
@@ -288,11 +329,17 @@ io.on("connection", (socket) => {
     };
     await Conversation.findOneAndUpdate(filter, update);
     //send back to sender
-    socket.emit("receiveReview", 0);
+    socket.emit("receiveReview", {
+      convId: data.convId,
+      review: 0,
+    });
     // try send to recipient if existing in active sockets
     const recSocket = activeUsersToSockets[recipient];
     if (recSocket != undefined) {
-      io.to(recSocket).emit("receiveReview", 0);
+      io.to(recSocket).emit("receiveReview", {
+        convId: data.convId,
+        review: 0,
+      });
     }
   });
 
@@ -307,6 +354,7 @@ io.on("connection", (socket) => {
       created_at: data.date,
       updated_at: data.date,
       base64_file: "",
+      was_read: 0,
     });
 
     const recipient = data.recipient;
@@ -319,11 +367,17 @@ io.on("connection", (socket) => {
     };
     await Conversation.findOneAndUpdate(filter, update);
     //send back to sender
-    socket.emit("receiveReview", data.score);
+    socket.emit("receiveReview", {
+      convId: data.convId,
+      review: data.score,
+    });
     // try send to recipient if existing in active sockets
     const recSocket = activeUsersToSockets[recipient];
     if (recSocket != undefined) {
-      io.to(recSocket).emit("receiveReview", data.score);
+      io.to(recSocket).emit("receiveReview", {
+        convId: data.convId,
+        review: data.score,
+      });
     }
 
     m.save()
@@ -342,6 +396,21 @@ io.on("connection", (socket) => {
       });
 
     nextMessageId++;
+  });
+
+  socket.on("unreadUpdate", async (data) => {
+    console.log("unread update income");
+    console.log(data);
+    for (var i = 0; i < data.length; i++) {
+      const messId = data[i];
+      console.log("messId " + messId);
+      const filter = { id: messId };
+      const update = {
+        was_read: 1,
+      };
+      await Message.findOneAndUpdate(filter, update);
+    }
+    socket.emit("unreadUpdateDone", {});
   });
 
   socket.on("disconnect", () => {

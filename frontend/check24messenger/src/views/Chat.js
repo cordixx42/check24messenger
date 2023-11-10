@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useState, useEffect, useRef, useContext } from "react";
+import { useState, useEffect, useRef, useContext, memo } from "react";
+import React from "react";
 import { Button, MessageInputField, SimpleBox } from "../style/components";
 import { Row, Column } from "../style/components";
 import styled from "styled-components";
@@ -10,11 +11,10 @@ const OverRideButton = styled(Button)`
   border: 4px solid #4fbfa3;
 `;
 
-export const Chat = () => {
+export const Chat = ({ handleUnreadMessages }) => {
   const { conversation } = useParams();
 
   const convId = parseInt(conversation.split(".")[0]);
-  // TODO consider saving in localstorage
   const userType = parseInt(conversation.split(".")[1]);
   const userTypeName = userType ? "service_provider" : "customer";
   const otherUserTypeName = userType ? "customer" : "service_provider";
@@ -39,6 +39,8 @@ export const Chat = () => {
   const [base64, setBase64] = useState("");
 
   const [messageType, setMessageType] = useState("");
+
+  const [trigger, setTrigger] = useState(false);
 
   const handleCurrentMessage = (e) => {
     setCurrentMessage(e.target.value);
@@ -113,43 +115,63 @@ export const Chat = () => {
     setFile(null);
     setBase64("");
     setMessageType("");
+    setTrigger(true);
   };
 
   useEffect(() => {
     socket.on("receiveAllMessages", (data) => {
-      console.log("received initial messages");
-      console.log(data);
+      //   console.log("received initial messages");
+      //   console.log(data);
       setMessages(data);
     });
     socket.on("receiveSingleMessage", (data) => {
-      console.log(data);
-      setReceivedMessage(data.text);
-      setMessages((before) => [...before, data]);
+      if (data.conversation_id == convId) {
+        console.log(data);
+        setReceivedMessage(data.text);
+        var readData = data;
+        //if message was sent by other one this one read it now for the first time
+        // if (data.sender_type == otherUserTypeName) {
+        //   handleUnreadMessages(data.id);
+        //   readData.was_read = 1;
+        // }
+        setMessages((before) => [...before, readData]);
+      }
     });
 
     socket.on("receiveReview", (data) => {
-      console.log("review is " + data);
-      setReview(data);
+      if (data.convId == convId) {
+        console.log("review is " + data);
+        setReview(data.review);
+      }
     });
 
     socket.on("receiveConversationState", (data) => {
-      setConversationState(data);
+      if (data.convId == convId) {
+        setConversationState(data.state);
+      }
     });
 
     socket.on("receiveConversationAccept", (data) => {
-      console.log(data);
-      setAcceptMessageDate(data);
+      if (data.convId == convId) {
+        setAcceptMessageDate(data.date);
+      }
     });
 
     socket.on("receiveOtherUser", (data) => {
-      if (userType) {
-        setOtherUser(data.customer_name);
-        setMe(data.service_provider_name);
-      } else {
-        setOtherUser(data.service_provider_name);
-        setMe(data.customer_name);
+      if (data.id == convId) {
+        if (userType) {
+          setOtherUser(data.customer_name);
+          setMe(data.service_provider_name);
+        } else {
+          setOtherUser(data.service_provider_name);
+          setMe(data.customer_name);
+        }
       }
     });
+
+    // socket.on("unreadUpdateDone", () => {
+    //   socket.emit("getAllMessages", { convId: convId });
+    // });
   }, [socket]);
 
   useEffect(() => {
@@ -157,15 +179,17 @@ export const Chat = () => {
     socket.emit("getConversationData", { convId: convId });
   }, []);
 
-  const s = useRef(null);
-  useEffect(() => {
-    s.current && s.current.scrollIntoView({ behavior: "smooth", block: "end" });
-  });
+  //   const chatBottom = useRef(null);
+  //   const unreadBottom = useRef(null);
+  //   useEffect(() => {
+  //     chatBottom.current &&
+  //       chatBottom.current.scrollIntoView({ behavior: "smooth", block: "end" });
+  //   }, []);
 
   useEffect(() => {
-    console.log("mounting" + convId);
+    console.log("chat mounting" + convId);
     return () => {
-      console.log("unmounting" + convId);
+      console.log("chat unmounting" + convId);
       setMessages([]);
     };
   }, []);
@@ -197,15 +221,15 @@ export const Chat = () => {
 
   return (
     <>
-      <h1>
+      {/* <h1>
         the conversation state is {conversationState} and accepted at{" "}
         {acceptMessageDate} with review {review}
-      </h1>
+      </h1> */}
       <Row style={{ width: "100%", justifyContent: "space-between" }}>
         <SimpleBox
           style={{
             fontSize: "20px",
-            background: "#94a895",
+            background: "lightblue",
             border: "2px solid black",
           }}
         >
@@ -214,7 +238,7 @@ export const Chat = () => {
         <SimpleBox
           style={{
             fontSize: "20px",
-            background: "#fabf87",
+            background: "lightblue",
             border: "2px solid black",
           }}
         >
@@ -228,10 +252,13 @@ export const Chat = () => {
           otherUserTypeName={otherUserTypeName}
           otherUser={otherUser}
           review={review}
-          s={s}
+          //   chatBottom={chatBottom}
+          //   unreadBottom={unreadBottom}
           handleReviewAnswer={handleReviewAnswer}
           base64toBlob={base64toBlob}
           conversationState={conversationState}
+          handleUnreadMessages={handleUnreadMessages}
+          trigger={trigger}
         />
       )}
       {/* blend out input field if state rejected */}
@@ -241,8 +268,10 @@ export const Chat = () => {
           userType == 1 &&
           messages[messages.length - 1] &&
           messages[messages.length - 1].message_type == "quote_offer"
-        ) && (
-          <Row style={{ alignSelf: "center" }}>
+        ) &&
+        //blend out for customer if no messages have been sent
+        !(userType == 0 && messages.length == 0) && (
+          <Row style={{ alignSelf: "center", marginBottom: "30px" }}>
             <MessageInputField
               value={currentMessage}
               onChange={handleCurrentMessage}
@@ -311,7 +340,9 @@ export const Chat = () => {
               Date.now() >
                 new Date(Date.parse(acceptMessageDate)).getTime() +
                   604800000 && (
-                <Button onClick={handleReviewRequest}>request review</Button>
+                <Button onClick={handleReviewRequest}>
+                  request <br /> review
+                </Button>
               )}
             {currentMessage && (
               <OverRideButton onClick={handleSend}>send</OverRideButton>
@@ -321,3 +352,5 @@ export const Chat = () => {
     </>
   );
 };
+
+export default React.memo(Chat);

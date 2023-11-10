@@ -1,3 +1,5 @@
+import React from "react";
+import { memo, useRef, useEffect, useState } from "react";
 import { Row, Column } from "../style/components";
 import styled from "styled-components";
 import r1 from "../imgs/review1.jpeg";
@@ -9,30 +11,32 @@ import r5 from "../imgs/review5.jpeg";
 const MessageFrame = styled(Column)`
   background-color: #d7e2e2;
   overflow-y: scroll;
-  width: 100%;
+  width: 90%;
   border-radius: 10px;
-  height: 80%;
+  height: 90%;
+  font-family: arial;
 `;
 
 const MessageBox = styled.div`
   background: whitesmoke;
-  font-size: 15px;
+  font-size: 17px;
   padding: 15px;
   margin: 10px;
   border-radius: 7px;
   display: flex;
   flex-direction: column;
   white-space: pre-wrap;
+  /* font-family: Arial, Helvetica, sans-serif; */
 `;
 
 const InnerBox = styled.div`
-  padding-top: 10px;
-  font-size: 11px;
+  padding-top: 15px;
+  font-size: 13px;
   align-self: flex-end;
 `;
 
 const DateBox = styled.div`
-  font-size: 15px;
+  font-size: 17px;
   background: #b4b4b4;
   border-radius: 20px;
   padding: 10px;
@@ -86,11 +90,31 @@ export const Messages = ({
   otherUserTypeName,
   otherUser,
   review,
-  s,
+  // chatBottom,
+  // unreadBottom,
   handleReviewAnswer,
   base64toBlob,
   conversationState,
+  handleUnreadMessages,
+  trigger,
 }) => {
+  var firstUnreadId = -1;
+  const [scrolled, setScrolled] = useState(false);
+  const chatBottom = useRef(null);
+  const unreadBottom = useRef(null);
+
+  useEffect(() => {
+    chatBottom.current &&
+      chatBottom.current.scrollIntoView({ behavior: "smooth", block: "end" });
+  });
+
+  // useEffect(() => {
+  //   if (!scrolled) {
+  //     chatBottom.current &&
+  //       chatBottom.current.scrollIntoView({ behavior: "smooth", block: "end" });
+  //   }
+  //   setScrolled(true);
+  // }, [scrolled]);
   return (
     <MessageFrame>
       {messages &&
@@ -104,22 +128,45 @@ export const Messages = ({
 
             // if date changes
             var prevDate;
+            var prevRead;
             if (idx > 0) {
-              prevDate = new Date(Date.parse(messages[idx - 1].created_at));
+              if (mess.message_type == "review_answer") {
+                prevDate = new Date(Date.parse(messages[idx - 2].created_at));
+              } else {
+                prevDate = new Date(Date.parse(messages[idx - 1].created_at));
+              }
+              prevRead = messages[idx - 1].was_read == 1;
             }
             const thisDate = new Date(Date.parse(messages[idx].created_at));
+            const thisRead = messages[idx].was_read == 1;
 
+            // edge case review answer
             const dateChange =
               idx == 0 ||
               (idx > 0 &&
                 (prevDate.getFullYear() != thisDate.getFullYear() ||
                   prevDate.getMonth() != thisDate.getMonth() ||
                   prevDate.getDate() != thisDate.getDate()));
+
+            const unread = mess.sender_type == otherUserTypeName && !thisRead;
+            const firstUnread =
+              firstUnreadId == -1 &&
+              mess.sender_type == otherUserTypeName &&
+              ((idx == 0 && !thisRead) || (idx > 0 && prevRead && !thisRead));
+
+            if (firstUnread) {
+              firstUnreadId = mess.id;
+              console.log("firstUnreadId is " + firstUnreadId);
+            }
+            if (unread) {
+              handleUnreadMessages(mess.id);
+            }
+
             if (mess.sender_type == userTypeName) {
               return (
                 <>
                   {dateChange && (
-                    <DateBox>
+                    <DateBox key={"date" + mess.id}>
                       {thisDate.toLocaleString([], {
                         year: "numeric",
                         month: "numeric",
@@ -230,9 +277,9 @@ export const Messages = ({
                       {new Date(Date.parse(mess.created_at)).toLocaleString(
                         [],
                         {
-                          year: "numeric",
-                          month: "numeric",
-                          day: "numeric",
+                          // year: "numeric",
+                          // month: "numeric",
+                          // day: "numeric",
                           hour: "2-digit",
                           minute: "2-digit",
                         }
@@ -245,12 +292,20 @@ export const Messages = ({
               return (
                 <>
                   {dateChange && (
-                    <DateBox>
+                    <DateBox key={"date" + mess.id}>
                       {thisDate.toLocaleString([], {
                         year: "numeric",
                         month: "numeric",
                         day: "numeric",
                       })}
+                    </DateBox>
+                  )}
+                  {firstUnread && (
+                    <DateBox
+                      // ref={chatBottom}
+                      style={{ width: "100%", textAlign: "center" }}
+                    >
+                      UNREAD
                     </DateBox>
                   )}
                   <MessageBox key={mess.id} style={{ alignSelf: "start" }}>
@@ -378,9 +433,9 @@ export const Messages = ({
                       {new Date(Date.parse(mess.created_at)).toLocaleString(
                         [],
                         {
-                          year: "numeric",
-                          month: "numeric",
-                          day: "numeric",
+                          // year: "numeric",
+                          // month: "numeric",
+                          // day: "numeric",
                           hour: "2-digit",
                           minute: "2-digit",
                         }
@@ -392,7 +447,10 @@ export const Messages = ({
             }
           }
         })}
-      <div ref={s}></div>
+      <div ref={chatBottom}></div>
+      {/* {firstUnreadId == -1 && <div ref={chatBottom}></div>} */}
     </MessageFrame>
   );
 };
+
+export default React.memo(Messages);

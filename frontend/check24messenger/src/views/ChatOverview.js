@@ -1,6 +1,7 @@
 import { useNavigate, Route, Routes } from "react-router-dom";
 import { useParams } from "react-router-dom";
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useCallback } from "react";
+import React from "react";
 import { Column, Row, Button, SimpleBox } from "../style/components";
 import { styled } from "styled-components";
 import { Default } from "./DefaultView";
@@ -19,7 +20,7 @@ const RowWithoutGap = styled(Row)`
 
 const ConversationBar = styled(Column)`
   height: 100vh;
-  width: 25vw;
+  width: 20vw;
   background-color: #c5c8f6;
   overflow-y: scroll;
 
@@ -28,23 +29,20 @@ const ConversationBar = styled(Column)`
 
 const DetailedChatArea = styled(Column)`
   height: 100vh;
-  width: 75vw;
+  width: 80vw;
   background-color: #587e96;
-  overflow: hidden;
+  overflow: visible;
   // overflow-y: scroll;
 
   /* border-radius: 7px; */
 `;
 
 const ConversationBox = styled(SimpleBox)`
+  text-align: center;
   cursor: pointer;
   &:hover {
     background-color: lightblue;
   }
-`;
-
-const ProfileButton = styled(Button)`
-  font-size: 30px;
 `;
 
 export const ChatOverview = () => {
@@ -57,7 +55,7 @@ export const ChatOverview = () => {
 
   const [conversations, setConversations] = useState([]);
 
-  const [currentConv, setCurrentConv] = useState("");
+  const [currentConv, setCurrentConv] = useState(-1);
 
   useEffect(() => {
     socket.connect();
@@ -88,18 +86,75 @@ export const ChatOverview = () => {
       });
   }, []);
 
+  useEffect(() => {
+    console.log("chatoverview mounting");
+    return () => {
+      console.log("chatoverview unmounting");
+    };
+  }, []);
+
   const handleConversation = (convId) => {
-    setCurrentConv(convId);
-    navigate("/" + userinfo + "/" + convId + "." + userType);
+    if (currentConv != convId) {
+      console.log("switch to conversation");
+      setCurrentConv(convId);
+      navigate("/" + userinfo + "/" + convId + "." + userType);
+    }
   };
 
   const handleDefault = () => {
-    navigate("/" + userinfo + "/default");
+    console.log("here " + currentConv);
+    if (currentConv != 0) {
+      console.log("switch to profiles");
+      setCurrentConv(0);
+      navigate("/" + userinfo + "/default");
+    }
   };
 
   const handleBye = () => {
     navigate("/");
   };
+
+  //unread messages of current conv
+  const [unreadMessageIds, setUnreadMessageIds] = useState([]);
+  // const [trigger, setTrigger] = useState(false);
+  // const [unreadMessageDates, setUnreadMessageDates] = useState([]);
+
+  // const handleUnreadMessages = useCallback(
+  //   (messId) => (e) => {
+  //     console.log("handleUnread in Chatoverview");
+  //     setUnreadMessageIds((before) => [...before, messId]);
+  //   },
+  //   []
+  // );
+
+  //still INFINITE LOOP
+  // PROBLEM
+  const handleUnreadMessages = useCallback(
+    (messId) => {
+      console.log("handleUnread called in chatoverview with messid " + messId);
+      if (unreadMessageIds.indexOf(messId) == -1) {
+        console.log("doesnt exist in ids");
+        unreadMessageIds[unreadMessageIds.length] = messId;
+        console.log("unreadIds " + unreadMessageIds);
+      }
+    },
+    [unreadMessageIds]
+  );
+
+  // useEffect(() => {
+  //   console.log("unreadMessageIds array is changing to " + unreadMessageIds);
+  // }, [unreadMessageIds]);
+
+  //update server database that was read changed
+  useEffect(() => {
+    console.log("before socket unread");
+    console.log("unreadIds length" + unreadMessageIds.length);
+    if (unreadMessageIds.length > 0) {
+      console.log("unread array not empty " + unreadMessageIds);
+      socket.emit("unreadUpdate", unreadMessageIds);
+      setUnreadMessageIds([]);
+    }
+  }, [currentConv]);
 
   return (
     <>
@@ -110,15 +165,33 @@ export const ChatOverview = () => {
 
       <RowWithoutGap>
         <ConversationBar>
-          <h1>{userName.toUpperCase()}</h1>
-          <ProfileButton onClick={handleDefault}>PROFILE</ProfileButton>
-          <ProfileButton
+          <div
+            style={{
+              fontSize: "35px",
+              paddingTop: "20px",
+              textAlign: "center",
+            }}
+          >
+            <b>{userName.toUpperCase()}</b>
+          </div>
+
+          <div style={{ fontSize: "30px", textAlign: "center" }}>
+            <i>{userType ? "Service Provider" : "Customer"}</i>
+          </div>
+
+          <Button
             style={{ fontSize: "20px", borderRadius: "20px" }}
+            onClick={handleDefault}
+          >
+            PROFILE
+          </Button>
+          <Button
+            style={{ fontSize: "15px", borderRadius: "20px" }}
             onClick={handleBye}
           >
             LOGOUT
-          </ProfileButton>
-          <h1>MY CHATS</h1>
+          </Button>
+          <h1>CHATS</h1>
           {conversations &&
             conversations.map((conv) => (
               <ConversationBox
@@ -128,6 +201,7 @@ export const ChatOverview = () => {
                   handleConversation(conv.id);
                 }}
               >
+                {console.log("hihhih")}
                 {userType
                   ? conv.customer_name.toUpperCase()
                   : conv.service_provider_name.toUpperCase()}
@@ -136,7 +210,16 @@ export const ChatOverview = () => {
         </ConversationBar>
         <DetailedChatArea>
           <Routes>
-            <Route path=":conversation" element={<Chat key={currentConv} />} />
+            <Route path="" element={<Default />} />
+            <Route
+              path=":conversation"
+              element={
+                <Chat
+                  key={currentConv}
+                  handleUnreadMessages={handleUnreadMessages}
+                />
+              }
+            />
             <Route path="default" element={<Default />} />
           </Routes>
         </DetailedChatArea>

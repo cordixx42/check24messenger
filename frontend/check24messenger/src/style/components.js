@@ -22,7 +22,7 @@ export const StyledContainer = styled.div`
   text-align: center;
 `;
 
-export const Button = styled.button`
+export const Button = styled.div`
   background: #d7e6f3;
   font-size: 20px;
   margin: 1em;
@@ -36,6 +36,7 @@ export const LoginInputField = styled.input`
   border-radius: 7px;
   border: 3px solid #005ea8;
   padding: 7px 12px;
+  margin-bottom: 20px;
   outline: none;
   font-size: 25px;
 `;
@@ -53,7 +54,7 @@ export const MessageInputField = styled.textarea`
 
 export const SimpleBox = styled.div`
   background-color: #808fd9;
-  font-size: 30px;
+  font-size: 20px;
   padding: 15px;
   margin: 10px;
   align-items: center;
