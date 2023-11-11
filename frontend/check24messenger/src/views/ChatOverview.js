@@ -80,25 +80,15 @@ export const ChatOverview = () => {
       });
   }, []);
 
-  useEffect(() => {
-    console.log("chatoverview mounting");
-    return () => {
-      console.log("chatoverview unmounting");
-    };
-  }, []);
-
   const handleConversation = (convId) => {
     if (currentConv != convId) {
-      console.log("switch to conversation");
       setCurrentConv(convId);
       navigate("/" + userinfo + "/" + convId + "." + userType);
     }
   };
 
   const handleDefault = () => {
-    console.log("here " + currentConv);
     if (currentConv != 0) {
-      console.log("switch to profiles");
       setCurrentConv(0);
       navigate("/" + userinfo);
     }
@@ -113,20 +103,15 @@ export const ChatOverview = () => {
 
   const handleUnreadMessages = useCallback(
     (messId) => {
-      console.log("handleUnread called in chatoverview with messid " + messId);
       if (unreadMessageIds.indexOf(messId) == -1) {
-        console.log("doesnt exist in ids");
         unreadMessageIds[unreadMessageIds.length] = messId;
-        console.log("unreadIds " + unreadMessageIds);
       }
     },
     [unreadMessageIds]
   );
 
-  //update server database that was read changed
+  //update server database that was messages were read
   useEffect(() => {
-    console.log("before socket unread");
-    console.log("unreadIds length" + unreadMessageIds.length);
     if (unreadMessageIds.length > 0) {
       console.log("unread array not empty " + unreadMessageIds);
       socket.emit("unreadUpdate", unreadMessageIds);
@@ -170,11 +155,9 @@ export const ChatOverview = () => {
               <ConversationBox
                 key={conv.id}
                 onClick={() => {
-                  console.log(conv.id + "was clicked ");
                   handleConversation(conv.id);
                 }}
               >
-                {console.log("hihhih")}
                 {userType
                   ? conv.customer_name.toUpperCase()
                   : conv.service_provider_name.toUpperCase()}

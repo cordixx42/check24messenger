@@ -72,7 +72,6 @@ export const Chat = ({ handleUnreadMessages }) => {
 
   const handleFile = (e) => {
     if (e.target.files) {
-      console.log(e.target.files);
       setFile(e.target.files[0]);
     }
   };
@@ -82,17 +81,13 @@ export const Chat = ({ handleUnreadMessages }) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         setBase64(e.target.result);
-        console.log(base64);
       };
-      console.log(file);
       reader.readAsDataURL(file);
     }
   }, [file]);
 
   const base64toBlob = (data) => {
     var contentType;
-
-    console.log(data);
     if (data.includes("application/pdf")) {
       console.log("pdf");
       contentType = "application/pdf";
@@ -117,7 +112,6 @@ export const Chat = ({ handleUnreadMessages }) => {
   };
 
   const handleSend = (e) => {
-    console.log(currentMessage);
     var mt = messageType;
     //implicit standard message
     if (mt == "") {
@@ -143,7 +137,7 @@ export const Chat = ({ handleUnreadMessages }) => {
   };
 
   useEffect(() => {
-    //BEFORE: received all messages
+    //BEFORE: received all messages at once
     // socket.on("receiveAllMessages", (data) => {
     //   if (!unMounted) {
     //     setMessages(data);
@@ -154,7 +148,6 @@ export const Chat = ({ handleUnreadMessages }) => {
     socket.on("receiveMessagesForPage", (data) => {
       setMessages(data.messages);
       if (data.isLast) {
-        console.log("isLast");
         setLastPage(data.pageNumber);
       }
     });
@@ -162,7 +155,6 @@ export const Chat = ({ handleUnreadMessages }) => {
     socket.on("receiveMessagesForNextPage", (data) => {
       setMessages(data.messages);
       if (data.isLast) {
-        console.log("isLast");
         setLastPage(data.pageNumber);
       }
     });
@@ -173,8 +165,6 @@ export const Chat = ({ handleUnreadMessages }) => {
 
     socket.on("receiveSingleMessage", (data) => {
       if (data.conversation_id == convId) {
-        console.log("conv id is " + convId);
-        console.log(data);
         setReceivedMessage(data.text);
         var readData = data;
         //if message was sent by other one this one read it now for the first time
@@ -188,7 +178,6 @@ export const Chat = ({ handleUnreadMessages }) => {
 
     socket.on("receiveReview", (data) => {
       if (data.convId == convId) {
-        console.log("review is " + data);
         setReview(data.review);
       }
     });
@@ -226,7 +215,6 @@ export const Chat = ({ handleUnreadMessages }) => {
       socket.off("receiveConversationState");
       socket.off("receiveConversationAccept");
       socket.off("receiveOtherUser");
-      console.log("use effect unmounting" + convId);
     };
   }, [socket]);
 
@@ -239,16 +227,7 @@ export const Chat = ({ handleUnreadMessages }) => {
     socket.emit("getConversationData", { convId: convId });
   }, []);
 
-  useEffect(() => {
-    console.log("chat mounting" + convId);
-    return () => {
-      console.log("chat unmounting" + convId);
-      setMessages([]);
-    };
-  }, []);
-
   const onChangeRadio = (e) => {
-    console.log(e.target.value);
     setMessageType(e.target.value);
   };
 
@@ -262,7 +241,6 @@ export const Chat = ({ handleUnreadMessages }) => {
   };
 
   const handleReviewAnswer = (score) => {
-    console.log(score);
     socket.emit("reviewAnswer", {
       convId: convId,
       score: score,

@@ -48,7 +48,6 @@ export const MessageInputField = styled.textarea`
   margin: 15px;
   outline: none;
   font-size: 20px;
-  //width: 150%;
   height: 50%;
 `;
 

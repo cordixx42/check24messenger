@@ -75,7 +75,6 @@ app.get("/identification", async (req, res) => {
 
 // given a username and a type (0,1) gives back a list of conversations for this user
 app.get("/conversations", async (req, res) => {
-  console.log("rest conversation request");
   const name = req.query.name;
   const type = req.query.type;
 
@@ -110,13 +109,10 @@ app.get("/messages", async (req, res) => {
 
 //create new socket connection to client
 io.on("connection", (socket) => {
-  console.log("connected to a client");
-  console.log(socket.id);
+  console.log("connected to a client with id " + socket.id);
 
   //for username to socket mapping
   socket.on("initialIdentfication", (data) => {
-    console.log("oh something came");
-    console.log(data);
     activeUsersToSockets[data.userName] = data.socketId;
     console.log(activeUsersToSockets);
   });
@@ -148,7 +144,6 @@ io.on("connection", (socket) => {
 
   socket.on("sendSingleMessage", async (data) => {
     console.log("message came");
-    console.log(data);
     var conv;
     var recipient;
     var userTypeName;
@@ -165,8 +160,7 @@ io.on("connection", (socket) => {
       conv != [] && (recipient = conv[0].service_provider_name);
     }
 
-    console.log(conv);
-    console.log(recipient);
+    console.log("recipient is " + recipient);
 
     var m = new Message({
       id: nextMessageId,
@@ -183,8 +177,7 @@ io.on("connection", (socket) => {
 
     m.save()
       .then(function (data) {
-        console.log("saving successful");
-        console.log(data);
+        console.log("saving message successful");
         //send back to sender
         socket.emit("receiveSingleMessage", data);
         // try send to recipient if existing in active sockets
@@ -243,19 +236,17 @@ io.on("connection", (socket) => {
           date: m.created_at,
         });
     }
-
-    console.log("beforeIncrement");
     nextMessageId++;
   });
 
-  socket.on("getAllMessages", async (data) => {
-    console.log("clients loading initial messages");
-    const convId = data.convId;
-    const mess = await Message.find({ conversation_id: convId }).sort({
-      created_at: 1,
-    });
-    socket.emit("receiveAllMessages", mess);
-  });
+  // socket.on("getAllMessages", async (data) => {
+  //   console.log("client loading initial messages");
+  //   const convId = data.convId;
+  //   const mess = await Message.find({ conversation_id: convId }).sort({
+  //     created_at: 1,
+  //   });
+  //   socket.emit("receiveAllMessages", mess);
+  // });
 
   socket.on("getMessagesForPage", async (data) => {
     const convId = data.convId;
@@ -275,10 +266,6 @@ io.on("connection", (socket) => {
     mess.reverse();
     mess.pop();
 
-    console.log("s");
-    mess.map((m) => console.log(m.id));
-    console.log("s");
-
     socket.emit("receiveMessagesForPage", {
       pageNumber: pageNumber,
       messages: mess,
@@ -287,12 +274,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("getMessagesForNextPage", async (data) => {
-    console.log("clients loading message for page");
     const convId = data.convId;
     const pageNumber = data.pageNumber;
     const nextId = data.nextId;
-
-    console.log("incoming nextId is " + nextId);
 
     const mess = await Message.find({
       conversation_id: convId,
@@ -308,9 +292,6 @@ io.on("connection", (socket) => {
 
     mess.reverse();
     mess.pop();
-    console.log("s");
-    mess.map((m) => console.log(m.id));
-    console.log("s");
 
     socket.emit("receiveMessagesForNextPage", {
       pageNumber: pageNumber,
@@ -320,12 +301,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("getMessagesForPrevPage", async (data) => {
-    console.log("clients loading message for page");
     const convId = data.convId;
     const pageNumber = data.pageNumber;
     const prevId = data.prevId;
-
-    console.log("incoming prevId is " + prevId);
 
     const mess = await Message.find({
       conversation_id: convId,
@@ -335,10 +313,6 @@ io.on("connection", (socket) => {
         id: 1,
       })
       .limit(pageLimit);
-
-    console.log("s");
-    mess.map((m) => console.log(m.id));
-    console.log("s");
 
     socket.emit("receiveMessagesForPrevPage", {
       pageNumber: pageNumber,
@@ -458,10 +432,8 @@ io.on("connection", (socket) => {
 
   socket.on("unreadUpdate", async (data) => {
     console.log("unread update income");
-    console.log(data);
     for (var i = 0; i < data.length; i++) {
       const messId = data[i];
-      console.log("messId " + messId);
       const filter = { id: messId };
       const update = {
         was_read: 1,
@@ -471,7 +443,6 @@ io.on("connection", (socket) => {
   });
 
   socket.on("singleUnreadUpdate", async (data) => {
-    console.log("single id " + data);
     const filter = { id: data };
     const update = {
       was_read: 1,
@@ -480,12 +451,11 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("user disconnected");
+    console.log("client disconnected");
     const key = Object.keys(activeUsersToSockets).find(
       (key) => activeUsersToSockets[key] === socket.id
     );
     if (key != undefined) {
-      console.log("user socket in dict");
       delete activeUsersToSockets[key];
       console.log(activeUsersToSockets);
     }

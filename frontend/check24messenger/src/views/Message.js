@@ -71,23 +71,17 @@ const maskSensibleInformation = (text) => {
   var z;
 
   while (null != (z = emailPattern.exec(text))) {
-    console.log("exec " + z);
     const len = z[1].length;
-    console.log(len);
     maskedText = maskedText.replace(z[1], star.repeat(len));
   }
 
   while (null != (z = phonePattern.exec(text))) {
-    console.log("exec " + z);
     const len = z[1].length;
-    console.log(len);
     maskedText = maskedText.replace(z[1], star.repeat(len));
   }
 
   while (null != (z = urlPattern.exec(text))) {
-    console.log("exec " + z);
     const len = z[0].length;
-    console.log(len);
     maskedText = maskedText.replace(z[0], star.repeat(len));
   }
 
@@ -133,13 +127,6 @@ export const Messages = ({
           block: "end",
         });
   });
-
-  useEffect(() => {
-    console.log("messages mounting");
-    return () => {
-      console.log("messages unmounting");
-    };
-  }, []);
 
   const handleScroll = (e) => {
     const bottom =
@@ -200,7 +187,6 @@ export const Messages = ({
 
             if (firstUnread) {
               firstUnreadId = mess.id;
-              console.log("firstUnreadId is " + firstUnreadId);
             }
             if (unread) {
               handleUnreadMessages(mess.id);

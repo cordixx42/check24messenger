@@ -18,10 +18,6 @@ export const UserIdentification = ({}) => {
   const options = ["customer", "service-provider"];
   const defaultOption = options[0];
 
-  useEffect(() => {
-    console.log("effect");
-  }, []);
-
   const handleSubmit = (e) => {
     console.log(userName);
     console.log(userType);
@@ -33,25 +29,12 @@ export const UserIdentification = ({}) => {
     )
       .then((res) => res.json())
       .then((data) => {
-        console.log(data);
         if (data) {
-          localStorage.setItem("userName", userName);
-          localStorage.setItem("userType", userType);
-          // TODO problem when refreshing page socket also disconnects and reconnects
-          // socket.emit("initialIdentfication", {
-          //   socketId: socket.id,
-          //   userName: userName,
-          //   userType: ut,
-          // });
           navigate("/" + userName + ut);
         } else {
           navigate("/notfound");
         }
       });
-
-    // e.preventDefault();
-    // localStorage.setItem("userName", userName);
-    // navigate("/chat");
   };
 
   const handleUserType = (e) => {
