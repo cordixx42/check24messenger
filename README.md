@@ -1,39 +1,56 @@
 # check24messenger
 
-messenger for check24 challenge
+Web Messenger for the Check24 Coding Challenge
 
-CURRENT IMPLEMENTATION
+OVERALL STRUCTURE
 
-frontend
-ReactJS
+Frontend: ReactJs
+Three main views: ChatOverview, Chat, Message
+ChatOverview compromises the navigation bar on the left, and the area on the right, where either Chats or a basic welcome page (DefaultView) is shown
 
-backend
-NodeJS
+Three minor views: UserIdentification, DefaultView, NotFound
+UserIdentification as a very simple login page, DefaultView as a simple welcome page and NotFound, if user does not exist
 
-database
-MongoDB
+Backend: NodeJs with ExpressJs
+A monolithic server, offering services to manipulate the conversations and messages
 
-WEBSOCKETS used for real-time communication => messages
--> each client/user one websocket to send messages to server
+Database: MongoDB
+non-relational database with efficient horizontal scalability
 
-rest api for identification and fetching conversations
+Communication: SocketIO in frontend and backend
+Websockets are used in order to enable responsive real-time communication
+Once a client is on the web messenger, a client-side websocket is created and connects to the server-side websocket
+After the connection is established, the client sends his user name to the server
+The server manages a socket dictionary mapping currently active users to their socket ids
 
-implementation detail REVIEW
--> added field review and accepted-at to DB
-->
+SOME IMPLEMENTATION DETAILS
 
-implementation detail attachments
+Reviews
+-> added field review and accepted_at to conversation
 
-FUTURE TODOS
-can conversation switch from "accepted" or "rejected" back to "quoted" ?
--> same provider offers a new quote to same customer, new conversation or not ?
+--> review = -1 => service provider has not requested review yet
+--> review = 0 => service provider requested review but customer has not answered yet
+--> 1 >= review <= 5 => score which customer answered with
 
--> size limitations for attachments under 1 mb
+--> accepted_at is needed to calculate if the quote has been accepted more than 7 days
 
--> creation of new conversations
+-> added new message types review_request and review_answer
 
--> masking better regular expressions
+--> once review_answer exists, review_request can be blended out
 
--> login system with creation of new users
+Attachments
+-> added field base64 to message
+-> the pdf or image file is translated to base64 and persisted in the database
 
--> more personal user information
+Unread Banner
+-> added field was_read to message
+-> show banner between first case where previous message from other user was_read = 1 but the message thereafter was_read = 0
+-> remember all the new unread messages and update was_read in those messages
+
+FUTURE TODOS AND OPTIMIZATIONS
+-> Login system with creation of new users and authentication
+-> Creation of new conversations
+-> Redesign dataset structure
+-> Showing when messages were read (using read_at field)
+-> Currently: only attachments under 1 MB possible, allow bigger attachment sizes, video attachments
+-> conversations switching from "accepted" or "rejected" back to "quoted"

@@ -5,6 +5,9 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 
 nextMessageId = 99;
+//page limit should be higher, around 50-100 at least
+//20 here is only for better demonstration purposes for the screencast
+pageLimit = 20;
 
 app.use(cors());
 
@@ -254,21 +257,93 @@ io.on("connection", (socket) => {
     socket.emit("receiveAllMessages", mess);
   });
 
-  //TODO
   socket.on("getMessagesForPage", async (data) => {
-    console.log("clients loading initial messages");
     const convId = data.convId;
-    //TODO currently firstDate is id, assumes that id grow monotonously, but better to do with creation dates
-    const firstDate = data.firstDate;
+    const pageNumber = data.pageNumber;
+    if (pageNumber == 0) {
+      var mess = await Message.find({
+        conversation_id: convId,
+      })
+        .sort({
+          id: -1,
+        })
+        .limit(pageLimit + 1);
+    }
+
+    const isLast = mess.length <= pageLimit;
+
+    mess.reverse();
+    mess.pop();
+
+    console.log("s");
+    mess.map((m) => console.log(m.id));
+    console.log("s");
+
+    socket.emit("receiveMessagesForPage", {
+      pageNumber: pageNumber,
+      messages: mess,
+      isLast: isLast,
+    });
+  });
+
+  socket.on("getMessagesForNextPage", async (data) => {
+    console.log("clients loading message for page");
+    const convId = data.convId;
+    const pageNumber = data.pageNumber;
+    const nextId = data.nextId;
+
+    console.log("incoming nextId is " + nextId);
+
     const mess = await Message.find({
       conversation_id: convId,
-      id: { $gte: firstDate },
+      id: { $lt: nextId },
     })
       .sort({
-        created_at: 1,
+        id: -1,
       })
-      .limit(25);
-    socket.emit("receiveMessagesForPage", mess);
+      .limit(pageLimit + 1);
+
+    //this is last page
+    const isLast = mess.length <= pageLimit;
+
+    mess.reverse();
+    mess.pop();
+    console.log("s");
+    mess.map((m) => console.log(m.id));
+    console.log("s");
+
+    socket.emit("receiveMessagesForNextPage", {
+      pageNumber: pageNumber,
+      messages: mess,
+      isLast: isLast,
+    });
+  });
+
+  socket.on("getMessagesForPrevPage", async (data) => {
+    console.log("clients loading message for page");
+    const convId = data.convId;
+    const pageNumber = data.pageNumber;
+    const prevId = data.prevId;
+
+    console.log("incoming prevId is " + prevId);
+
+    const mess = await Message.find({
+      conversation_id: convId,
+      id: { $gt: prevId },
+    })
+      .sort({
+        id: 1,
+      })
+      .limit(pageLimit);
+
+    console.log("s");
+    mess.map((m) => console.log(m.id));
+    console.log("s");
+
+    socket.emit("receiveMessagesForPrevPage", {
+      pageNumber: pageNumber,
+      messages: mess,
+    });
   });
 
   socket.on("reviewRequest", async (data) => {

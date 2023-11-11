@@ -35,15 +35,36 @@ export const Chat = ({ handleUnreadMessages }) => {
 
   const [acceptMessageDate, setAcceptMessageDate] = useState("");
 
+  // for attachmentss
   const [file, setFile] = useState(null);
   const [base64, setBase64] = useState("");
 
   const [messageType, setMessageType] = useState("");
 
-  //trigger to remove unread banner when message sent
+  // trigger to remove unread banner when message sent
   const [removeUnreadTrigger, setRemoveUnreadTrigger] = useState(false);
 
-  var unMounted = false;
+  // for pagination
+  const [currentPage, setCurrentPage] = useState(0);
+  const [lastPage, setLastPage] = useState(-1);
+
+  const handleNextPage = (e) => {
+    socket.emit("getMessagesForNextPage", {
+      convId: convId,
+      pageNumber: currentPage + 1,
+      nextId: messages[0].id,
+    });
+    setCurrentPage(currentPage + 1);
+  };
+
+  const handlePrevPage = (e) => {
+    socket.emit("getMessagesForPrevPage", {
+      convId: convId,
+      pageNumber: currentPage - 1,
+      prevId: messages[messages.length - 1].id,
+    });
+    setCurrentPage(currentPage - 1);
+  };
 
   const handleCurrentMessage = (e) => {
     setCurrentMessage(e.target.value);
@@ -122,13 +143,36 @@ export const Chat = ({ handleUnreadMessages }) => {
   };
 
   useEffect(() => {
-    socket.on("receiveAllMessages", (data) => {
-      if (!unMounted) {
-        setMessages(data);
+    //BEFORE: received all messages
+    // socket.on("receiveAllMessages", (data) => {
+    //   if (!unMounted) {
+    //     setMessages(data);
+    //   }
+    // });
+
+    //NOW: receive messages per page
+    socket.on("receiveMessagesForPage", (data) => {
+      setMessages(data.messages);
+      if (data.isLast) {
+        console.log("isLast");
+        setLastPage(data.pageNumber);
       }
     });
+
+    socket.on("receiveMessagesForNextPage", (data) => {
+      setMessages(data.messages);
+      if (data.isLast) {
+        console.log("isLast");
+        setLastPage(data.pageNumber);
+      }
+    });
+
+    socket.on("receiveMessagesForPrevPage", (data) => {
+      setMessages(data.messages);
+    });
+
     socket.on("receiveSingleMessage", (data) => {
-      if (!unMounted && data.conversation_id == convId) {
+      if (data.conversation_id == convId) {
         console.log("conv id is " + convId);
         console.log(data);
         setReceivedMessage(data.text);
@@ -143,26 +187,26 @@ export const Chat = ({ handleUnreadMessages }) => {
     });
 
     socket.on("receiveReview", (data) => {
-      if (!unMounted && data.convId == convId) {
+      if (data.convId == convId) {
         console.log("review is " + data);
         setReview(data.review);
       }
     });
 
     socket.on("receiveConversationState", (data) => {
-      if (!unMounted && data.convId == convId) {
+      if (data.convId == convId) {
         setConversationState(data.state);
       }
     });
 
     socket.on("receiveConversationAccept", (data) => {
-      if (!unMounted && data.convId == convId) {
+      if (data.convId == convId) {
         setAcceptMessageDate(data.date);
       }
     });
 
     socket.on("receiveOtherUser", (data) => {
-      if (!unMounted && data.id == convId) {
+      if (data.id == convId) {
         if (userType) {
           setOtherUser(data.customer_name);
           setMe(data.service_provider_name);
@@ -174,13 +218,24 @@ export const Chat = ({ handleUnreadMessages }) => {
     });
 
     return () => {
+      socket.off("receiveMessagesForPage");
+      socket.off("receiveMessagesForPrevPage");
+      socket.off("receiveMessagesForNextPage");
+      socket.off("receiveSingleMessage");
+      socket.off("receiveReview");
+      socket.off("receiveConversationState");
+      socket.off("receiveConversationAccept");
+      socket.off("receiveOtherUser");
       console.log("use effect unmounting" + convId);
-      unMounted = true;
     };
   }, [socket]);
 
   useEffect(() => {
-    socket.emit("getAllMessages", { convId: convId });
+    // socket.emit("getAllMessages", { convId: convId });
+    socket.emit("getMessagesForPage", {
+      convId: convId,
+      pageNumber: currentPage,
+    });
     socket.emit("getConversationData", { convId: convId });
   }, []);
 
@@ -255,6 +310,10 @@ export const Chat = ({ handleUnreadMessages }) => {
           conversationState={conversationState}
           handleUnreadMessages={handleUnreadMessages}
           removeUnreadTrigger={removeUnreadTrigger}
+          currentPage={currentPage}
+          handleNextPage={handleNextPage}
+          handlePrevPage={handlePrevPage}
+          lastPage={lastPage}
         />
       )}
       {/* blend out input field if state rejected */}

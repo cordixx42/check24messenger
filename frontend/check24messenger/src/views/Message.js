@@ -43,6 +43,19 @@ const DateBox = styled.div`
   margin: 7px;
 `;
 
+const PaginationButton = styled.div`
+  font-size: 30px;
+  background: #c5c8f6;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  line-height: 25px;
+  padding: 10px;
+  margin-top: 15px;
+  text-align: center;
+  cursor: pointer;
+`;
+
 const maskSensibleInformation = (text) => {
   let emailPattern = /([\w-\.]+)@([\w-]+\.)+[\w-]{2,4}/g;
 
@@ -92,6 +105,10 @@ export const Messages = ({
   conversationState,
   handleUnreadMessages,
   removeUnreadTrigger,
+  currentPage,
+  handleNextPage,
+  handlePrevPage,
+  lastPage,
 }) => {
   var firstUnreadId = -1;
   const [scrolled, setScrolled] = useState(false);
@@ -135,6 +152,14 @@ export const Messages = ({
 
   return (
     <MessageFrame onScroll={handleScroll}>
+      <Row style={{ gap: "40px" }}>
+        {currentPage != 0 && (
+          <PaginationButton onClick={handlePrevPage}>&lt;</PaginationButton>
+        )}
+        {lastPage != currentPage && (
+          <PaginationButton onClick={handleNextPage}>&gt;</PaginationButton>
+        )}
+      </Row>
       {messages &&
         messages.map((mess, idx) => {
           if (review > 0 && mess.message_type == "review_request") {
