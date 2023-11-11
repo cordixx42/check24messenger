@@ -6,7 +6,8 @@ OVERALL STRUCTURE
 
 Frontend: ReactJs
 Three main views: ChatOverview, Chat, Message
-ChatOverview compromises the navigation bar on the left, and the area on the right, where either Chats or a basic welcome page (DefaultView) is shown
+ChatOverview shows a navigation bar with the chats on the left, and the individual chats on the right
+Message shows the part of the chat displaying all the messages
 
 Three minor views: UserIdentification, DefaultView, NotFound
 UserIdentification as a very simple login page, DefaultView as a simple welcome page and NotFound, if user does not exist
@@ -15,7 +16,7 @@ Backend: NodeJs with ExpressJs
 A monolithic server, offering services to manipulate the conversations and messages
 
 Database: MongoDB
-non-relational database with efficient horizontal scalability
+non-relational database, efficient horizontal scalability
 
 Communication: SocketIO in frontend and backend
 Websockets are used in order to enable responsive real-time communication
@@ -47,6 +48,9 @@ Unread Banner
 -> show banner between first case where previous message from other user was_read = 1 but the message thereafter was_read = 0
 -> remember all the new unread messages and update was_read in those messages
 
+Pagination
+-> in backend a variable pageLimit can be set, to control how many messages are fetched for one page
+
 FUTURE TODOS AND OPTIMIZATIONS
 -> Login system with creation of new users and authentication
 -> Creation of new conversations
@@ -54,3 +58,14 @@ FUTURE TODOS AND OPTIMIZATIONS
 -> Showing when messages were read (using read_at field)
 -> Currently: only attachments under 1 MB possible, allow bigger attachment sizes, video attachments
 -> conversations switching from "accepted" or "rejected" back to "quoted"
+
+SCREENCAST
+
+https://drive.google.com/drive/folders/1c7W-JUCgIPOp6gqfO37pZ17d-hzmAXuM?usp=sharing
+
+5 Scenarios
+-> accept: customer and service provider from login to quote offer to accepting the quote
+-> reject: customer rejects a quote offer
+-> review: service provider requests review, customer answers review
+-> unread: unread banner behaviour
+-> pagination: example with pageLimit = 20
