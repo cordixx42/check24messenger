@@ -1,8 +1,6 @@
-# check24messenger
+# Web Messenger for the Check24 Coding Challenge
 
-Web Messenger for the Check24 Coding Challenge
-
-OVERALL STRUCTURE
+## OVERALL STRUCTURE
 
 Frontend: ReactJs
 Three main views: ChatOverview, Chat, Message
@@ -24,7 +22,7 @@ Once a client is on the web messenger, a client-side websocket is created and co
 After the connection is established, the client sends his user name to the server
 The server manages a socket dictionary mapping currently active users to their socket ids
 
-SOME IMPLEMENTATION DETAILS
+## SOME IMPLEMENTATION DETAILS
 
 Reviews
 -> added field review and accepted_at to conversation
@@ -51,7 +49,8 @@ Unread Banner
 Pagination
 -> in backend a variable pageLimit can be set, to control how many messages are fetched for one page
 
-FUTURE TODOS AND OPTIMIZATIONS
+## FUTURE TODOS AND OPTIMIZATIONS
+
 -> Login system with creation of new users and authentication
 -> Creation of new conversations
 -> Redesign dataset structure
@@ -59,7 +58,7 @@ FUTURE TODOS AND OPTIMIZATIONS
 -> Currently: only attachments under 1 MB possible, allow bigger attachment sizes, video attachments
 -> conversations switching from "accepted" or "rejected" back to "quoted"
 
-SCREENCAST
+## SCREENCAST
 
 https://drive.google.com/drive/folders/1c7W-JUCgIPOp6gqfO37pZ17d-hzmAXuM?usp=sharing
 
